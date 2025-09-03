@@ -708,6 +708,18 @@ function SequencerGrid16x16() {
               </div>
             );
           })}
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                setActive(
+                  Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+                );
+              }}
+              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
+            >
+              Clear Notes
+            </button>
+          </div>
         </div>
       </div>
     </main>
