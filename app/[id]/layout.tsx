@@ -6,10 +6,10 @@ export default function SubPageLayout({
   params,
 }: Readonly<{ children: React.ReactNode; params: Promise<{ id: string }> }>) {
   const { id: currentId } = use(params);
-  const links = Array.from({ length: 7 }, (_, i) => i + 1);
+  const links = Array.from({ length: 11 }, (_, i) => i + 1);
   return (
-    <div className="min-h-screen">
-      <header className="p-6 border-b border-white/10">
+    <div className="h-screen flex flex-col">
+      <header className="h-[80px] px-6 border-b border-white/10 flex items-center">
         <nav className="flex gap-6 text-lg">
           {links.map((n) => {
             const isActive = String(n) === currentId;
@@ -30,7 +30,7 @@ export default function SubPageLayout({
           })}
         </nav>
       </header>
-      <div className="p-6">{children}</div>
+      <main className="flex-1 overflow-hidden">{children}</main>
     </div>
   );
 }
