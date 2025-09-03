@@ -52,7 +52,7 @@ export default function SubPage({ params }: PageProps) {
   if (id === "1") {
     return (
       <main className="h-full flex items-center justify-center">
-        <div className="w-[60px] h-[60px] bg-[#7a7a7a]" />
+        <div className="w-[60px] h-[60px] bg-[var(--gray)]" />
       </main>
     );
   }
@@ -62,7 +62,7 @@ export default function SubPage({ params }: PageProps) {
       <main className="h-full flex items-center justify-center">
         <div className="flex gap-[15px]">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="w-[60px] h-[60px] bg-[#7a7a7a]" />
+            <div key={i} className="w-[60px] h-[60px] bg-[var(--gray)]" />
           ))}
         </div>
       </main>
@@ -139,7 +139,7 @@ function ClickToggleWithSoundAndArrow() {
               className={
                 isOn
                   ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                  : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                  : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
               }
               style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
             />
@@ -167,7 +167,7 @@ function HoverPersist() {
                 });
               }
             }}
-            className={isOn ? "w-[60px] h-[60px] bg-[#bfbfbf]" : "w-[60px] h-[60px] bg-[#7a7a7a]"}
+            className={isOn ? "w-[60px] h-[60px] bg-[var(--lightgray)]" : "w-[60px] h-[60px] bg-[var(--gray)]"}
           />
         ))}
       </div>
@@ -182,7 +182,7 @@ function HoverRevert() {
         {Array.from({ length: 8 }).map((_, idx) => (
           <div
             key={idx}
-            className="w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf]"
+            className="w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)]"
           />
         ))}
       </div>
@@ -208,7 +208,7 @@ function ClickToggle() {
             className={
               isOn
                 ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
             }
             style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
           />
@@ -238,7 +238,7 @@ function ClickToggleWithSound() {
             className={
               isOn
                 ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
             }
             style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
           />
@@ -288,7 +288,7 @@ function MovingArrowOverSquares() {
               className={
                 isOn
                   ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                  : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                  : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
               }
               style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
             />
@@ -366,7 +366,7 @@ function SequencerAutoPlay() {
               className={
                 isOn
                   ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                  : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                  : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
               }
               style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
             />
@@ -452,7 +452,7 @@ function SequencerTwoRows() {
                 className={
                   isOn
                     ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
                 }
                 style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
               />
@@ -472,7 +472,7 @@ function SequencerTwoRows() {
                 className={
                   isOn
                     ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
                 }
                 style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
               />
@@ -559,7 +559,7 @@ function SequencerTwoRowsWithClear() {
                 className={
                   isOn
                     ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
                 }
                 style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
               />
@@ -579,7 +579,7 @@ function SequencerTwoRowsWithClear() {
                 className={
                   isOn
                     ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[#7a7a7a] hover:bg-[#bfbfbf] cursor-pointer"
+                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
                 }
                 style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
               />
