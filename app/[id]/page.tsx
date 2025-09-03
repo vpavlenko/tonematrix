@@ -105,6 +105,10 @@ export default function SubPage({ params }: PageProps) {
     return <SequencerTwoRowsWithClear />;
   }
 
+  if (id === "12") {
+    return <SequencerGrid16x16 />;
+  }
+
   return (
     <main className="h-full flex items-center justify-center">
       <p>Page {id}</p>
@@ -602,4 +606,111 @@ function SequencerTwoRowsWithClear() {
   );
 }
 
+
+function SequencerGrid16x16() {
+  const numCols = 16;
+  const numRows = 16;
+  const squareSize = 20; // px
+  const gap = 5; // px
+  const totalWidth = numCols * squareSize + (numCols - 1) * gap;
+  const [position, setPosition] = useState(0);
+  const [active, setActive] = useState<boolean[][]>(
+    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+  );
+  const activeRef = useRef(active);
+  const positionRef = useRef(0);
+  const nextStepTimeRef = useRef<number>(0);
+  const intervalRef = useRef<number | null>(null);
+  const stepSec = 0.25;
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  function midiToFreq(midi: number): number {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  // Bottom row (row 0) is C3, then Eb3, F3, G3, Bb3, C4, ...
+  function frequencyForRow(rowIndexFromBottom: number): number {
+    const pentatonicOffsets = [0, 3, 5, 7, 10];
+    const octave = Math.floor(rowIndexFromBottom / pentatonicOffsets.length);
+    const degreeIndex = rowIndexFromBottom % pentatonicOffsets.length;
+    const baseMidiC3 = 48; // C3
+    const midi = baseMidiC3 + octave * 12 + pentatonicOffsets[degreeIndex];
+    return midiToFreq(midi);
+  }
+
+  useEffect(() => {
+    const ctx = getAudioContext();
+    nextStepTimeRef.current = ctx.currentTime + 0.05;
+    const lookahead = 0.1; // seconds
+    const schedulerIntervalMs = 25;
+
+    const tick = () => {
+      const now = ctx.currentTime;
+      while (nextStepTimeRef.current <= now + lookahead) {
+        const nextIndex = (positionRef.current + 1) % numCols;
+        for (let r = 0; r < numRows; r++) {
+          if (activeRef.current[r][nextIndex]) {
+            const freq = frequencyForRow(r);
+            playBellAt(freq, nextStepTimeRef.current);
+          }
+        }
+        positionRef.current = nextIndex;
+        nextStepTimeRef.current += stepSec;
+        setPosition(positionRef.current);
+      }
+    };
+
+    intervalRef.current = window.setInterval(tick, schedulerIntervalMs);
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  return (
+    <main className="h-full flex items-center justify-center">
+      <div className="flex flex-col items-start" style={{ gap: 10 }}>
+        <div className="relative h-[30px]" style={{ width: totalWidth }}>
+          <div
+            aria-hidden
+            className="w-0 h-0 border-l-[10px] border-r-[10px] border-l-transparent border-r-transparent border-t-[14px] border-t-white absolute top-1/2 -translate-y-1/2"
+            style={{ left: position * (squareSize + gap) + squareSize / 2 - 10 }}
+          />
+        </div>
+        <div className="flex flex-col" style={{ gap }}>
+          {Array.from({ length: numRows }).map((_, rTop) => {
+            const r = numRows - 1 - rTop; // display top-to-bottom, bottom row is r=0
+            return (
+              <div key={rTop} className="flex" style={{ gap }}>
+                {Array.from({ length: numCols }).map((_, c) => {
+                  const isOn = active[r][c];
+                  return (
+                    <div
+                      key={c}
+                      onClick={() => {
+                        setActive((prev) => {
+                          const next = prev.map((row) => row.slice());
+                          next[r][c] = !next[r][c];
+                          return next;
+                        });
+                      }}
+                      className={
+                        isOn
+                          ? "w-[20px] h-[20px] bg-white cursor-pointer"
+                          : "w-[20px] h-[20px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
+                      }
+                      style={isOn ? { boxShadow: "0 0 1px 1px white" } : undefined}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </main>
+  );
+}
 
