@@ -805,24 +805,26 @@ function SequencerGrid16x16WithShare({ animateOnPlay = false }: { animateOnPlay?
       <div className="flex flex-col items-start" style={{ gap: 10 }}>
         <div className="w-full flex items-center" style={{ gap: 8 }}>
           <span>Share the song:</span>
-          <input
-            value={shareUrl}
-            readOnly
-            className="flex-1 min-w-[320px] px-2 py-1 rounded-md bg-white/10 border border-white/20"
-          />
-          <button
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(shareUrl);
-                setCopied(true);
-                window.setTimeout(() => setCopied(false), 1000);
-              } catch {}
-            }}
-            aria-label="Copy link"
-            className="px-3 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer"
-          >
-            {copied ? "Copied!" : <CopyIcon size={16} />}
-          </button>
+          <div className="inline-flex items-stretch flex-1 min-w-[320px]">
+            <input
+              value={shareUrl}
+              readOnly
+              className="flex-1 px-2 h-9 bg-white/10 border border-white/20 border-r-0 rounded-l-md rounded-r-none"
+            />
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(shareUrl);
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 1000);
+                } catch {}
+              }}
+              aria-label="Copy link"
+              className="px-3 h-9 bg-white/10 hover:bg-white/20 border border-white/20 border-l-0 rounded-l-none rounded-r-md cursor-pointer flex items-center justify-center"
+            >
+              {copied ? "Copied!" : <CopyIcon size={16} />}
+            </button>
+          </div>
         </div>
         <div className="relative h-[30px]" style={{ width: totalWidth }}>
           <div
