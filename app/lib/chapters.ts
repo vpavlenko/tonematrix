@@ -1,4 +1,4 @@
 // Central source of truth for number of chapters/pages
-export const CHAPTERS_COUNT = 15;
+export const CHAPTERS_COUNT = 14;
 
 

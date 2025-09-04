@@ -16,7 +16,6 @@ export default function SubPage({ params }: PageProps) {
   const chapters = [
     Page1,
     Page2,
-    HoverPersist,
     HoverRevert,
     ClickToggle,
     ClickToggleWithSound,
