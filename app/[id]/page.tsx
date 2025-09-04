@@ -2,7 +2,10 @@
 
 import { use, useState, useEffect, useRef } from "react";
 import { getAudioContext, playBellAt, playBell, playBellC5, midiToFreq } from "@/app/lib/audio";
+import { useSequencer16x16 } from "@/app/lib/sequencer";
 import { Volume2, VolumeX } from "lucide-react";
+import { MuteButton, ClearButton } from "@/app/components/Controls";
+import SequencerGrid from "@/app/components/SequencerGrid";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -550,86 +553,12 @@ function SequencerTwoRowsWithClear() {
 
 
 function SequencerGrid16x16({ animateOnPlay = false }: { animateOnPlay?: boolean }) {
-  const numCols = 16;
-  const numRows = 16;
   const squareSize = 20; // px
   const gap = 7; // px
+  const { numCols, numRows, position, active, setActive, flash } = useSequencer16x16({
+    animateOnPlay,
+  });
   const totalWidth = numCols * squareSize + (numCols - 1) * gap;
-  const [position, setPosition] = useState(0);
-  const [active, setActive] = useState<boolean[][]>(
-    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-  );
-  const activeRef = useRef(active);
-  const [flash, setFlash] = useState<boolean[][]>(
-    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-  );
-  const positionRef = useRef(0);
-  const nextStepTimeRef = useRef<number>(0);
-  const intervalRef = useRef<number | null>(null);
-  const stepSec = 0.25;
-
-  useEffect(() => {
-    activeRef.current = active;
-  }, [active]);
-
-  function midiToFreq(midi: number): number {
-    return 440 * Math.pow(2, (midi - 69) / 12);
-  }
-
-  // Bottom row (row 0) is C3, then Eb3, F3, G3, Bb3, C4, ...
-  function frequencyForRow(rowIndexFromBottom: number): number {
-    const pentatonicOffsets = [0, 3, 5, 7, 10];
-    const octave = Math.floor(rowIndexFromBottom / pentatonicOffsets.length);
-    const degreeIndex = rowIndexFromBottom % pentatonicOffsets.length;
-    const baseMidiC3 = 48; // C3
-    const midi = baseMidiC3 + octave * 12 + pentatonicOffsets[degreeIndex];
-    return midiToFreq(midi);
-  }
-
-  useEffect(() => {
-    const ctx = getAudioContext();
-    nextStepTimeRef.current = ctx.currentTime + 0.05;
-    const lookahead = 0.1; // seconds
-    const schedulerIntervalMs = 25;
-
-    const tick = () => {
-      const now = ctx.currentTime;
-      while (nextStepTimeRef.current <= now + lookahead) {
-        const nextIndex = (positionRef.current + 1) % numCols;
-        for (let r = 0; r < numRows; r++) {
-          if (activeRef.current[r][nextIndex]) {
-            const freq = frequencyForRow(r);
-            playBellAt(freq, nextStepTimeRef.current);
-            if (animateOnPlay) {
-              const msUntil = Math.max(0, (nextStepTimeRef.current - now) * 1000);
-              window.setTimeout(() => {
-                setFlash((prev) => {
-                  const next = prev.map((row) => row.slice());
-                  next[r][nextIndex] = true;
-                  return next;
-                });
-                window.setTimeout(() => {
-                  setFlash((prev) => {
-                    const next = prev.map((row) => row.slice());
-                    next[r][nextIndex] = false;
-                    return next;
-                  });
-                }, 150);
-              }, msUntil);
-            }
-          }
-        }
-        positionRef.current = nextIndex;
-        nextStepTimeRef.current += stepSec;
-        setPosition(positionRef.current);
-      }
-    };
-
-    intervalRef.current = window.setInterval(tick, schedulerIntervalMs);
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-    };
-  }, []);
 
   return (
     <main className="h-full flex items-center justify-center">
@@ -642,50 +571,29 @@ function SequencerGrid16x16({ animateOnPlay = false }: { animateOnPlay?: boolean
           />
         </div>
         <div className="flex flex-col" style={{ gap }}>
-          {Array.from({ length: numRows }).map((_, rTop) => {
-            const r = numRows - 1 - rTop; // display top-to-bottom, bottom row is r=0
-            return (
-              <div key={rTop} className="flex" style={{ gap }}>
-                {Array.from({ length: numCols }).map((_, c) => {
-                  const isOn = active[r][c];
-                  const isFlashing = flash[r][c];
-                  return (
-                    <div
-                      key={c}
-                      onClick={() => {
-                        setActive((prev) => {
-                          const next = prev.map((row) => row.slice());
-                          next[r][c] = !next[r][c];
-                          return next;
-                        });
-                      }}
-                      className={
-                        isOn
-                          ? "w-[20px] h-[20px] bg-white cursor-pointer"
-                          : "w-[20px] h-[20px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                      }
-                      style={
-                        isOn
-                          ? { boxShadow: isFlashing ? "0 0 3px 3px white" : "0 0 1px 1px white" }
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
+          <SequencerGrid
+            numRows={numRows}
+            numCols={numCols}
+            gap={gap}
+            squareSize={20}
+            active={active}
+            flash={flash}
+            onToggle={(r, c) =>
+              setActive((prev) => {
+                const next = prev.map((row) => row.slice());
+                next[r][c] = !next[r][c];
+                return next;
+              })
+            }
+          />
           <div className="pt-2">
-            <button
-              onClick={() => {
+            <ClearButton
+              onClear={() =>
                 setActive(
                   Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-                );
-              }}
-              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
-            >
-              Clear Notes
-            </button>
+                )
+              }
+            />
           </div>
         </div>
       </div>
@@ -694,89 +602,14 @@ function SequencerGrid16x16({ animateOnPlay = false }: { animateOnPlay?: boolean
 }
 
 function SequencerGrid16x16WithMute({ animateOnPlay = false }: { animateOnPlay?: boolean }) {
-  const numCols = 16;
-  const numRows = 16;
   const squareSize = 20; // px
   const gap = 7; // px
-  const totalWidth = numCols * squareSize + (numCols - 1) * gap;
-  const [position, setPosition] = useState(0);
-  const [active, setActive] = useState<boolean[][]>(
-    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-  );
-  const activeRef = useRef(active);
-  const [flash, setFlash] = useState<boolean[][]>(
-    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-  );
-  const positionRef = useRef(0);
-  const nextStepTimeRef = useRef<number>(0);
-  const intervalRef = useRef<number | null>(null);
-  const stepSec = 0.25;
   const [muted, setMuted] = useState(false);
-
-  useEffect(() => {
-    activeRef.current = active;
-  }, [active]);
-
-  function midiToFreq(midi: number): number {
-    return 440 * Math.pow(2, (midi - 69) / 12);
-  }
-
-  // Bottom row (row 0) is C3, then Eb3, F3, G3, Bb3, C4, ...
-  function frequencyForRow(rowIndexFromBottom: number): number {
-    const pentatonicOffsets = [0, 3, 5, 7, 10];
-    const octave = Math.floor(rowIndexFromBottom / pentatonicOffsets.length);
-    const degreeIndex = rowIndexFromBottom % pentatonicOffsets.length;
-    const baseMidiC3 = 48; // C3
-    const midi = baseMidiC3 + octave * 12 + pentatonicOffsets[degreeIndex];
-    return midiToFreq(midi);
-  }
-
-  useEffect(() => {
-    const ctx = getAudioContext();
-    nextStepTimeRef.current = ctx.currentTime + 0.05;
-    const lookahead = 0.1; // seconds
-    const schedulerIntervalMs = 25;
-
-    const tick = () => {
-      const now = ctx.currentTime;
-      while (nextStepTimeRef.current <= now + lookahead) {
-        const nextIndex = (positionRef.current + 1) % numCols;
-        for (let r = 0; r < numRows; r++) {
-          if (activeRef.current[r][nextIndex]) {
-            const freq = frequencyForRow(r);
-            if (!muted) {
-              playBellAt(freq, nextStepTimeRef.current);
-            }
-            if (animateOnPlay) {
-              const msUntil = Math.max(0, (nextStepTimeRef.current - now) * 1000);
-              window.setTimeout(() => {
-                setFlash((prev) => {
-                  const next = prev.map((row) => row.slice());
-                  next[r][nextIndex] = true;
-                  return next;
-                });
-                window.setTimeout(() => {
-                  setFlash((prev) => {
-                    const next = prev.map((row) => row.slice());
-                    next[r][nextIndex] = false;
-                    return next;
-                  });
-                }, 150);
-              }, msUntil);
-            }
-          }
-        }
-        positionRef.current = nextIndex;
-        nextStepTimeRef.current += stepSec;
-        setPosition(positionRef.current);
-      }
-    };
-
-    intervalRef.current = window.setInterval(tick, schedulerIntervalMs);
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-    };
-  }, [muted, animateOnPlay]);
+  const { numCols, numRows, position, active, setActive, flash } = useSequencer16x16({
+    animateOnPlay,
+    isMuted: muted,
+  });
+  const totalWidth = numCols * squareSize + (numCols - 1) * gap;
 
   return (
     <main className="h-full flex items-center justify-center">
@@ -789,57 +622,30 @@ function SequencerGrid16x16WithMute({ animateOnPlay = false }: { animateOnPlay?:
           />
         </div>
         <div className="flex flex-col" style={{ gap }}>
-          {Array.from({ length: numRows }).map((_, rTop) => {
-            const r = numRows - 1 - rTop; // display top-to-bottom, bottom row is r=0
-            return (
-              <div key={rTop} className="flex" style={{ gap }}>
-                {Array.from({ length: numCols }).map((_, c) => {
-                  const isOn = active[r][c];
-                  const isFlashing = flash[r][c];
-                  return (
-                    <div
-                      key={c}
-                      onClick={() => {
-                        setActive((prev) => {
-                          const next = prev.map((row) => row.slice());
-                          next[r][c] = !next[r][c];
-                          return next;
-                        });
-                      }}
-                      className={
-                        isOn
-                          ? "w-[20px] h-[20px] bg-white cursor-pointer"
-                          : "w-[20px] h-[20px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                      }
-                      style={
-                        isOn
-                          ? { boxShadow: isFlashing ? "0 0 3px 3px white" : "0 0 1px 1px white" }
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
+          <SequencerGrid
+            numRows={numRows}
+            numCols={numCols}
+            gap={gap}
+            squareSize={20}
+            active={active}
+            flash={flash}
+            onToggle={(r, c) =>
+              setActive((prev) => {
+                const next = prev.map((row) => row.slice());
+                next[r][c] = !next[r][c];
+                return next;
+              })
+            }
+          />
           <div className="pt-2 flex items-center" style={{ gap: 24 }}>
-            <button
-              onClick={() => setMuted((m) => !m)}
-              aria-label={muted ? "Unmute" : "Mute"}
-              className="p-0 bg-transparent hover:opacity-80"
-            >
-              {muted ? <VolumeX size={36} /> : <Volume2 size={36} />}
-            </button>
-            <button
-              onClick={() => {
+            <MuteButton muted={muted} onToggle={() => setMuted((m) => !m)} />
+            <ClearButton
+              onClear={() =>
                 setActive(
                   Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-                );
-              }}
-              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
-            >
-              Clear Notes
-            </button>
+                )
+              }
+            />
           </div>
         </div>
       </div>
@@ -849,44 +655,16 @@ function SequencerGrid16x16WithMute({ animateOnPlay = false }: { animateOnPlay?:
 
 
 function SequencerGrid16x16WithShare({ animateOnPlay = false }: { animateOnPlay?: boolean }) {
-  const numCols = 16;
-  const numRows = 16;
   const squareSize = 20; // px
   const gap = 7; // px
-  const totalWidth = numCols * squareSize + (numCols - 1) * gap;
-  const [position, setPosition] = useState(0);
-  const [active, setActive] = useState<boolean[][]>(
-    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-  );
-  const activeRef = useRef(active);
-  const [flash, setFlash] = useState<boolean[][]>(
-    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-  );
-  const positionRef = useRef(0);
-  const nextStepTimeRef = useRef<number>(0);
-  const intervalRef = useRef<number | null>(null);
-  const stepSec = 0.25;
   const [muted, setMuted] = useState(false);
+  const { numCols, numRows, position, active, setActive, flash } = useSequencer16x16({
+    animateOnPlay,
+    isMuted: muted,
+  });
+  const totalWidth = numCols * squareSize + (numCols - 1) * gap;
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    activeRef.current = active;
-  }, [active]);
-
-  function midiToFreq(midi: number): number {
-    return 440 * Math.pow(2, (midi - 69) / 12);
-  }
-
-  // Bottom row (row 0) is C3, then Eb3, F3, G3, Bb3, C4, ...
-  function frequencyForRow(rowIndexFromBottom: number): number {
-    const pentatonicOffsets = [0, 3, 5, 7, 10];
-    const octave = Math.floor(rowIndexFromBottom / pentatonicOffsets.length);
-    const degreeIndex = rowIndexFromBottom % pentatonicOffsets.length;
-    const baseMidiC3 = 48; // C3
-    const midi = baseMidiC3 + octave * 12 + pentatonicOffsets[degreeIndex];
-    return midiToFreq(midi);
-  }
 
   // Encode/decode helpers for compact 256-bit representation
   function bytesToBase64Url(bytes: Uint8Array): string {
@@ -962,53 +740,6 @@ function SequencerGrid16x16WithShare({ animateOnPlay = false }: { animateOnPlay?
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const ctx = getAudioContext();
-    nextStepTimeRef.current = ctx.currentTime + 0.05;
-    const lookahead = 0.1; // seconds
-    const schedulerIntervalMs = 25;
-
-    const tick = () => {
-      const now = ctx.currentTime;
-      while (nextStepTimeRef.current <= now + lookahead) {
-        const nextIndex = (positionRef.current + 1) % numCols;
-        for (let r = 0; r < numRows; r++) {
-          if (activeRef.current[r][nextIndex]) {
-            const freq = frequencyForRow(r);
-            if (!muted) {
-              playBellAt(freq, nextStepTimeRef.current);
-            }
-            if (animateOnPlay) {
-              const msUntil = Math.max(0, (nextStepTimeRef.current - now) * 1000);
-              window.setTimeout(() => {
-                setFlash((prev) => {
-                  const next = prev.map((row) => row.slice());
-                  next[r][nextIndex] = true;
-                  return next;
-                });
-                window.setTimeout(() => {
-                  setFlash((prev) => {
-                    const next = prev.map((row) => row.slice());
-                    next[r][nextIndex] = false;
-                    return next;
-                  });
-                }, 150);
-              }, msUntil);
-            }
-          }
-        }
-        positionRef.current = nextIndex;
-        nextStepTimeRef.current += stepSec;
-        setPosition(positionRef.current);
-      }
-    };
-
-    intervalRef.current = window.setInterval(tick, schedulerIntervalMs);
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-    };
-  }, [muted, animateOnPlay]);
-
   return (
     <main className="h-full flex items-center justify-center">
       <div className="flex flex-col items-start" style={{ gap: 10 }}>
@@ -1040,57 +771,30 @@ function SequencerGrid16x16WithShare({ animateOnPlay = false }: { animateOnPlay?
           />
         </div>
         <div className="flex flex-col" style={{ gap }}>
-          {Array.from({ length: numRows }).map((_, rTop) => {
-            const r = numRows - 1 - rTop; // display top-to-bottom, bottom row is r=0
-            return (
-              <div key={rTop} className="flex" style={{ gap }}>
-                {Array.from({ length: numCols }).map((_, c) => {
-                  const isOn = active[r][c];
-                  const isFlashing = flash[r][c];
-                  return (
-                    <div
-                      key={c}
-                      onClick={() => {
-                        setActive((prev) => {
-                          const next = prev.map((row) => row.slice());
-                          next[r][c] = !next[r][c];
-                          return next;
-                        });
-                      }}
-                      className={
-                        isOn
-                          ? "w-[20px] h-[20px] bg-white cursor-pointer"
-                          : "w-[20px] h-[20px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                      }
-                      style={
-                        isOn
-                          ? { boxShadow: isFlashing ? "0 0 3px 3px white" : "0 0 1px 1px white" }
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
+          <SequencerGrid
+            numRows={numRows}
+            numCols={numCols}
+            gap={gap}
+            squareSize={20}
+            active={active}
+            flash={flash}
+            onToggle={(r, c) =>
+              setActive((prev) => {
+                const next = prev.map((row) => row.slice());
+                next[r][c] = !next[r][c];
+                return next;
+              })
+            }
+          />
           <div className="pt-2 flex items-center" style={{ gap: 24 }}>
-            <button
-              onClick={() => setMuted((m) => !m)}
-              aria-label={muted ? "Unmute" : "Mute"}
-              className="p-0 bg-transparent hover:opacity-80"
-            >
-              {muted ? <VolumeX size={36} /> : <Volume2 size={36} />}
-            </button>
-            <button
-              onClick={() => {
+            <MuteButton muted={muted} onToggle={() => setMuted((m) => !m)} />
+            <ClearButton
+              onClear={() =>
                 setActive(
                   Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
-                );
-              }}
-              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
-            >
-              Clear Notes
-            </button>
+                )
+              }
+            />
           </div>
         </div>
       </div>
