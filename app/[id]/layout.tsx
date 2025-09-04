@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { use } from "react";
+import { CHAPTERS_COUNT } from "@/app/lib/chapters";
 
 export default function SubPageLayout({
   children,
   params,
 }: Readonly<{ children: React.ReactNode; params: Promise<{ id: string }> }>) {
   const { id: currentId } = use(params);
-  const links = Array.from({ length: 13 }, (_, i) => i + 1);
+  const links = Array.from({ length: CHAPTERS_COUNT }, (_, i) => i + 1);
   return (
     <div className="h-screen flex flex-col">
       <header className="h-[80px] px-6 border-b border-white/10 flex items-center">

@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect, useRef } from "react";
 import { getAudioContext, playBellAt, playBell, playBellC5, midiToFreq } from "@/app/lib/audio";
+import { Volume2, VolumeX } from "lucide-react";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -23,6 +24,8 @@ export default function SubPage({ params }: PageProps) {
     SequencerTwoRowsWithClear,
     () => <SequencerGrid16x16 />,
     () => <SequencerGrid16x16 animateOnPlay />,
+    () => <SequencerGrid16x16WithMute animateOnPlay />,
+    () => <SequencerGrid16x16WithShare animateOnPlay />,
   ];
   const index = Number.parseInt(id, 10) - 1;
   const Component = chapters[index];
@@ -690,3 +693,407 @@ function SequencerGrid16x16({ animateOnPlay = false }: { animateOnPlay?: boolean
   );
 }
 
+function SequencerGrid16x16WithMute({ animateOnPlay = false }: { animateOnPlay?: boolean }) {
+  const numCols = 16;
+  const numRows = 16;
+  const squareSize = 20; // px
+  const gap = 7; // px
+  const totalWidth = numCols * squareSize + (numCols - 1) * gap;
+  const [position, setPosition] = useState(0);
+  const [active, setActive] = useState<boolean[][]>(
+    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+  );
+  const activeRef = useRef(active);
+  const [flash, setFlash] = useState<boolean[][]>(
+    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+  );
+  const positionRef = useRef(0);
+  const nextStepTimeRef = useRef<number>(0);
+  const intervalRef = useRef<number | null>(null);
+  const stepSec = 0.25;
+  const [muted, setMuted] = useState(false);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  function midiToFreq(midi: number): number {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  // Bottom row (row 0) is C3, then Eb3, F3, G3, Bb3, C4, ...
+  function frequencyForRow(rowIndexFromBottom: number): number {
+    const pentatonicOffsets = [0, 3, 5, 7, 10];
+    const octave = Math.floor(rowIndexFromBottom / pentatonicOffsets.length);
+    const degreeIndex = rowIndexFromBottom % pentatonicOffsets.length;
+    const baseMidiC3 = 48; // C3
+    const midi = baseMidiC3 + octave * 12 + pentatonicOffsets[degreeIndex];
+    return midiToFreq(midi);
+  }
+
+  useEffect(() => {
+    const ctx = getAudioContext();
+    nextStepTimeRef.current = ctx.currentTime + 0.05;
+    const lookahead = 0.1; // seconds
+    const schedulerIntervalMs = 25;
+
+    const tick = () => {
+      const now = ctx.currentTime;
+      while (nextStepTimeRef.current <= now + lookahead) {
+        const nextIndex = (positionRef.current + 1) % numCols;
+        for (let r = 0; r < numRows; r++) {
+          if (activeRef.current[r][nextIndex]) {
+            const freq = frequencyForRow(r);
+            if (!muted) {
+              playBellAt(freq, nextStepTimeRef.current);
+            }
+            if (animateOnPlay) {
+              const msUntil = Math.max(0, (nextStepTimeRef.current - now) * 1000);
+              window.setTimeout(() => {
+                setFlash((prev) => {
+                  const next = prev.map((row) => row.slice());
+                  next[r][nextIndex] = true;
+                  return next;
+                });
+                window.setTimeout(() => {
+                  setFlash((prev) => {
+                    const next = prev.map((row) => row.slice());
+                    next[r][nextIndex] = false;
+                    return next;
+                  });
+                }, 150);
+              }, msUntil);
+            }
+          }
+        }
+        positionRef.current = nextIndex;
+        nextStepTimeRef.current += stepSec;
+        setPosition(positionRef.current);
+      }
+    };
+
+    intervalRef.current = window.setInterval(tick, schedulerIntervalMs);
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+    };
+  }, [muted, animateOnPlay]);
+
+  return (
+    <main className="h-full flex items-center justify-center">
+      <div className="flex flex-col items-start" style={{ gap: 10 }}>
+        <div className="relative h-[30px]" style={{ width: totalWidth }}>
+          <div
+            aria-hidden
+            className="w-0 h-0 border-l-[10px] border-r-[10px] border-l-transparent border-r-transparent border-t-[14px] border-t-white absolute top-1/2 -translate-y-1/2"
+            style={{ left: position * (squareSize + gap) + squareSize / 2 - 10 }}
+          />
+        </div>
+        <div className="flex flex-col" style={{ gap }}>
+          {Array.from({ length: numRows }).map((_, rTop) => {
+            const r = numRows - 1 - rTop; // display top-to-bottom, bottom row is r=0
+            return (
+              <div key={rTop} className="flex" style={{ gap }}>
+                {Array.from({ length: numCols }).map((_, c) => {
+                  const isOn = active[r][c];
+                  const isFlashing = flash[r][c];
+                  return (
+                    <div
+                      key={c}
+                      onClick={() => {
+                        setActive((prev) => {
+                          const next = prev.map((row) => row.slice());
+                          next[r][c] = !next[r][c];
+                          return next;
+                        });
+                      }}
+                      className={
+                        isOn
+                          ? "w-[20px] h-[20px] bg-white cursor-pointer"
+                          : "w-[20px] h-[20px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
+                      }
+                      style={
+                        isOn
+                          ? { boxShadow: isFlashing ? "0 0 3px 3px white" : "0 0 1px 1px white" }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+          <div className="pt-2 flex items-center" style={{ gap: 24 }}>
+            <button
+              onClick={() => setMuted((m) => !m)}
+              aria-label={muted ? "Unmute" : "Mute"}
+              className="p-0 bg-transparent hover:opacity-80"
+            >
+              {muted ? <VolumeX size={36} /> : <Volume2 size={36} />}
+            </button>
+            <button
+              onClick={() => {
+                setActive(
+                  Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+                );
+              }}
+              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
+            >
+              Clear Notes
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+
+function SequencerGrid16x16WithShare({ animateOnPlay = false }: { animateOnPlay?: boolean }) {
+  const numCols = 16;
+  const numRows = 16;
+  const squareSize = 20; // px
+  const gap = 7; // px
+  const totalWidth = numCols * squareSize + (numCols - 1) * gap;
+  const [position, setPosition] = useState(0);
+  const [active, setActive] = useState<boolean[][]>(
+    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+  );
+  const activeRef = useRef(active);
+  const [flash, setFlash] = useState<boolean[][]>(
+    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+  );
+  const positionRef = useRef(0);
+  const nextStepTimeRef = useRef<number>(0);
+  const intervalRef = useRef<number | null>(null);
+  const stepSec = 0.25;
+  const [muted, setMuted] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  function midiToFreq(midi: number): number {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  // Bottom row (row 0) is C3, then Eb3, F3, G3, Bb3, C4, ...
+  function frequencyForRow(rowIndexFromBottom: number): number {
+    const pentatonicOffsets = [0, 3, 5, 7, 10];
+    const octave = Math.floor(rowIndexFromBottom / pentatonicOffsets.length);
+    const degreeIndex = rowIndexFromBottom % pentatonicOffsets.length;
+    const baseMidiC3 = 48; // C3
+    const midi = baseMidiC3 + octave * 12 + pentatonicOffsets[degreeIndex];
+    return midiToFreq(midi);
+  }
+
+  // Encode/decode helpers for compact 256-bit representation
+  function bytesToBase64Url(bytes: Uint8Array): string {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    return base64;
+  }
+  function base64UrlToBytes(b64url: string): Uint8Array {
+    let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+    const padLen = b64.length % 4;
+    if (padLen === 2) b64 += "==";
+    else if (padLen === 3) b64 += "=";
+    else if (padLen !== 0) b64 += ""; // no-op for other cases
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function gridToBytes(grid: boolean[][]): Uint8Array {
+    const bytes = new Uint8Array(32);
+    let bitIndex = 0;
+    for (let r = 0; r < numRows; r++) {
+      for (let c = 0; c < numCols; c++) {
+        if (grid[r][c]) {
+          const byteIndex = bitIndex >> 3;
+          const bitOffset = bitIndex & 7; // LSB-first in each byte
+          bytes[byteIndex] |= 1 << bitOffset;
+        }
+        bitIndex++;
+      }
+    }
+    return bytes;
+  }
+  function bytesToGrid(bytes: Uint8Array): boolean[][] {
+    const grid = Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false));
+    let bitIndex = 0;
+    for (let r = 0; r < numRows; r++) {
+      for (let c = 0; c < numCols; c++) {
+        const byteIndex = bitIndex >> 3;
+        const bitOffset = bitIndex & 7;
+        const on = byteIndex < bytes.length ? ((bytes[byteIndex] >> bitOffset) & 1) === 1 : false;
+        grid[r][c] = on;
+        bitIndex++;
+      }
+    }
+    return grid;
+  }
+
+  // Build share URL from current grid
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bytes = gridToBytes(active);
+    const d = bytesToBase64Url(bytes);
+    const url = `${window.location.origin}${window.location.pathname}?d=${d}`;
+    setShareUrl(url);
+  }, [active]);
+
+  // Rehydrate from ?d= on first mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const d = params.get("d");
+      if (d) {
+        const bytes = base64UrlToBytes(d);
+        if (bytes.length >= 32) {
+          const grid = bytesToGrid(bytes.subarray(0, 32));
+          setActive(grid);
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const ctx = getAudioContext();
+    nextStepTimeRef.current = ctx.currentTime + 0.05;
+    const lookahead = 0.1; // seconds
+    const schedulerIntervalMs = 25;
+
+    const tick = () => {
+      const now = ctx.currentTime;
+      while (nextStepTimeRef.current <= now + lookahead) {
+        const nextIndex = (positionRef.current + 1) % numCols;
+        for (let r = 0; r < numRows; r++) {
+          if (activeRef.current[r][nextIndex]) {
+            const freq = frequencyForRow(r);
+            if (!muted) {
+              playBellAt(freq, nextStepTimeRef.current);
+            }
+            if (animateOnPlay) {
+              const msUntil = Math.max(0, (nextStepTimeRef.current - now) * 1000);
+              window.setTimeout(() => {
+                setFlash((prev) => {
+                  const next = prev.map((row) => row.slice());
+                  next[r][nextIndex] = true;
+                  return next;
+                });
+                window.setTimeout(() => {
+                  setFlash((prev) => {
+                    const next = prev.map((row) => row.slice());
+                    next[r][nextIndex] = false;
+                    return next;
+                  });
+                }, 150);
+              }, msUntil);
+            }
+          }
+        }
+        positionRef.current = nextIndex;
+        nextStepTimeRef.current += stepSec;
+        setPosition(positionRef.current);
+      }
+    };
+
+    intervalRef.current = window.setInterval(tick, schedulerIntervalMs);
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+    };
+  }, [muted, animateOnPlay]);
+
+  return (
+    <main className="h-full flex items-center justify-center">
+      <div className="flex flex-col items-start" style={{ gap: 10 }}>
+        <div className="w-full flex items-center" style={{ gap: 8 }}>
+          <span>Share the song:</span>
+          <input
+            value={shareUrl}
+            readOnly
+            className="flex-1 min-w-[320px] px-2 py-1 rounded-md bg-white/10 border border-white/20"
+          />
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(shareUrl);
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1000);
+              } catch {}
+            }}
+            className="px-3 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+        <div className="relative h-[30px]" style={{ width: totalWidth }}>
+          <div
+            aria-hidden
+            className="w-0 h-0 border-l-[10px] border-r-[10px] border-l-transparent border-r-transparent border-t-[14px] border-t-white absolute top-1/2 -translate-y-1/2"
+            style={{ left: position * (squareSize + gap) + squareSize / 2 - 10 }}
+          />
+        </div>
+        <div className="flex flex-col" style={{ gap }}>
+          {Array.from({ length: numRows }).map((_, rTop) => {
+            const r = numRows - 1 - rTop; // display top-to-bottom, bottom row is r=0
+            return (
+              <div key={rTop} className="flex" style={{ gap }}>
+                {Array.from({ length: numCols }).map((_, c) => {
+                  const isOn = active[r][c];
+                  const isFlashing = flash[r][c];
+                  return (
+                    <div
+                      key={c}
+                      onClick={() => {
+                        setActive((prev) => {
+                          const next = prev.map((row) => row.slice());
+                          next[r][c] = !next[r][c];
+                          return next;
+                        });
+                      }}
+                      className={
+                        isOn
+                          ? "w-[20px] h-[20px] bg-white cursor-pointer"
+                          : "w-[20px] h-[20px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
+                      }
+                      style={
+                        isOn
+                          ? { boxShadow: isFlashing ? "0 0 3px 3px white" : "0 0 1px 1px white" }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+          <div className="pt-2 flex items-center" style={{ gap: 24 }}>
+            <button
+              onClick={() => setMuted((m) => !m)}
+              aria-label={muted ? "Unmute" : "Mute"}
+              className="p-0 bg-transparent hover:opacity-80"
+            >
+              {muted ? <VolumeX size={36} /> : <Volume2 size={36} />}
+            </button>
+            <button
+              onClick={() => {
+                setActive(
+                  Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+                );
+              }}
+              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
+            >
+              Clear Notes
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
