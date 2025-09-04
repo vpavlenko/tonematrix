@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { use } from "react";
+import AudioGate from "@/app/components/AudioGate";
 import { CHAPTERS_COUNT } from "@/app/lib/chapters";
 
 export default function SubPageLayout({
@@ -32,6 +33,7 @@ export default function SubPageLayout({
         </nav>
       </header>
       <main className="flex-1 overflow-hidden">{children}</main>
+      <AudioGate />
     </div>
   );
 }
