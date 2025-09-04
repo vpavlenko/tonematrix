@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAudioContext } from "@/app/lib/audio";
+import { Play } from "lucide-react";
 
 export default function AudioGate() {
   const [needsUnlock, setNeedsUnlock] = useState(false);
@@ -47,15 +48,15 @@ export default function AudioGate() {
     <div
       role="dialog"
       aria-modal
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur"
     >
       <button
+        type="button"
         onClick={tryResume}
-        className="px-6 py-3 rounded-md bg-white text-black text-lg font-medium cursor-pointer shadow"
+        className="w-[120px] h-[120px] rounded-full bg-white text-black flex items-center justify-center cursor-pointer shadow"
         aria-label="Play"
       >
-        Play
+        <Play size={48} aria-hidden />
       </button>
     </div>
   );
