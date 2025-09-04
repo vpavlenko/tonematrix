@@ -6,7 +6,7 @@ export default function SubPageLayout({
   params,
 }: Readonly<{ children: React.ReactNode; params: Promise<{ id: string }> }>) {
   const { id: currentId } = use(params);
-  const links = Array.from({ length: 12 }, (_, i) => i + 1);
+  const links = Array.from({ length: 13 }, (_, i) => i + 1);
   return (
     <div className="h-screen flex flex-col">
       <header className="h-[80px] px-6 border-b border-white/10 flex items-center">

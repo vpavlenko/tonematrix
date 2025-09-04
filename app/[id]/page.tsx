@@ -48,70 +48,49 @@ function playBellC5() {
 
 export default function SubPage({ params }: PageProps) {
   const { id } = use(params);
-
-  if (id === "1") {
+  const chapters = [
+    Page1,
+    Page2,
+    HoverPersist,
+    HoverRevert,
+    ClickToggle,
+    ClickToggleWithSound,
+    ClickToggleWithSoundAndArrow,
+    MovingArrowOverSquares,
+    SequencerAutoPlay,
+    SequencerTwoRows,
+    SequencerTwoRowsWithClear,
+    () => <SequencerGrid16x16 />,
+    () => <SequencerGrid16x16 animateOnPlay />,
+  ];
+  const index = Number.parseInt(id, 10) - 1;
+  const Component = chapters[index];
+  if (!Component) {
     return (
       <main className="h-full flex items-center justify-center">
-        <div className="w-[60px] h-[60px] bg-[var(--gray)]" />
+        <p>Page {id}</p>
       </main>
     );
   }
+  return <Component />;
+}
 
-  if (id === "2") {
-    return (
-      <main className="h-full flex items-center justify-center">
-        <div className="flex gap-[15px]">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="w-[60px] h-[60px] bg-[var(--gray)]" />
-          ))}
-        </div>
-      </main>
-    );
-  }
-
-  if (id === "3") {
-    return <HoverPersist />;
-  }
-
-  if (id === "4") {
-    return <HoverRevert />;
-  }
-
-  if (id === "5") {
-    return <ClickToggle />;
-  }
-
-  if (id === "6") {
-    return <ClickToggleWithSound />;
-  }
-
-  if (id === "7") {
-    return <ClickToggleWithSoundAndArrow />;
-  }
-
-  if (id === "8") {
-    return <MovingArrowOverSquares />;
-  }
-
-  if (id === "9") {
-    return <SequencerAutoPlay />;
-  }
-
-  if (id === "10") {
-    return <SequencerTwoRows />;
-  }
-
-  if (id === "11") {
-    return <SequencerTwoRowsWithClear />;
-  }
-
-  if (id === "12") {
-    return <SequencerGrid16x16 />;
-  }
-
+function Page1() {
   return (
     <main className="h-full flex items-center justify-center">
-      <p>Page {id}</p>
+      <div className="w-[60px] h-[60px] bg-[var(--gray)]" />
+    </main>
+  );
+}
+
+function Page2() {
+  return (
+    <main className="h-full flex items-center justify-center">
+      <div className="flex gap-[15px]">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="w-[60px] h-[60px] bg-[var(--gray)]" />
+        ))}
+      </div>
     </main>
   );
 }
@@ -365,7 +344,6 @@ function SequencerAutoPlay() {
                   next[idx] = !next[idx];
                   return next;
                 });
-                playBellC5();
               }}
               className={
                 isOn
@@ -607,7 +585,7 @@ function SequencerTwoRowsWithClear() {
 }
 
 
-function SequencerGrid16x16() {
+function SequencerGrid16x16({ animateOnPlay = false }: { animateOnPlay?: boolean }) {
   const numCols = 16;
   const numRows = 16;
   const squareSize = 20; // px
@@ -618,6 +596,9 @@ function SequencerGrid16x16() {
     Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
   );
   const activeRef = useRef(active);
+  const [flash, setFlash] = useState<boolean[][]>(
+    Array.from({ length: numRows }, () => Array<boolean>(numCols).fill(false))
+  );
   const positionRef = useRef(0);
   const nextStepTimeRef = useRef<number>(0);
   const intervalRef = useRef<number | null>(null);
@@ -655,6 +636,23 @@ function SequencerGrid16x16() {
           if (activeRef.current[r][nextIndex]) {
             const freq = frequencyForRow(r);
             playBellAt(freq, nextStepTimeRef.current);
+            if (animateOnPlay) {
+              const msUntil = Math.max(0, (nextStepTimeRef.current - now) * 1000);
+              window.setTimeout(() => {
+                setFlash((prev) => {
+                  const next = prev.map((row) => row.slice());
+                  next[r][nextIndex] = true;
+                  return next;
+                });
+                window.setTimeout(() => {
+                  setFlash((prev) => {
+                    const next = prev.map((row) => row.slice());
+                    next[r][nextIndex] = false;
+                    return next;
+                  });
+                }, 150);
+              }, msUntil);
+            }
           }
         }
         positionRef.current = nextIndex;
@@ -686,6 +684,7 @@ function SequencerGrid16x16() {
               <div key={rTop} className="flex" style={{ gap }}>
                 {Array.from({ length: numCols }).map((_, c) => {
                   const isOn = active[r][c];
+                  const isFlashing = flash[r][c];
                   return (
                     <div
                       key={c}
@@ -701,7 +700,11 @@ function SequencerGrid16x16() {
                           ? "w-[20px] h-[20px] bg-white cursor-pointer"
                           : "w-[20px] h-[20px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
                       }
-                      style={isOn ? { boxShadow: "0 0 1px 1px white" } : undefined}
+                      style={
+                        isOn
+                          ? { boxShadow: isFlashing ? "0 0 3px 3px white" : "0 0 1px 1px white" }
+                          : undefined
+                      }
                     />
                   );
                 })}
