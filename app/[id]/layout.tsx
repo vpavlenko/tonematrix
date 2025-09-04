@@ -2,6 +2,7 @@ import Link from "next/link";
 import { use } from "react";
 import AudioGate from "@/app/components/AudioGate";
 import { CHAPTERS_COUNT } from "@/app/lib/chapters";
+import Sidebar from "@/app/components/Sidebar";
 
 export default function SubPageLayout({
   children,
@@ -32,7 +33,16 @@ export default function SubPageLayout({
           })}
         </nav>
       </header>
-      <main className="flex-1 overflow-hidden">{children}</main>
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full flex flex-col lg:flex-row">
+          <aside className="w-full lg:w-[20em] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 p-6 overflow-auto">
+            <Sidebar />
+          </aside>
+          <section className="flex-1 min-w-0 min-h-0 overflow-hidden">
+            {children}
+          </section>
+        </div>
+      </main>
       <AudioGate />
     </div>
   );
