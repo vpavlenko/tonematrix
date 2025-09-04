@@ -1,50 +1,11 @@
 "use client";
 
 import { use, useState, useEffect, useRef } from "react";
+import { getAudioContext, playBellAt, playBell, playBellC5, midiToFreq } from "@/app/lib/audio";
 
 type PageProps = { params: Promise<{ id: string }> };
 
-// Shared audio helpers
-function getAudioContext(): AudioContext {
-  const w = window as any;
-  if (!w.__audioCtx) {
-    const AudioCtx = w.AudioContext || w.webkitAudioContext;
-    w.__audioCtx = new AudioCtx();
-  }
-  return w.__audioCtx as AudioContext;
-}
-
-function playBellAt(baseFreq: number, when: number) {
-  const ctx = getAudioContext();
-  const master = ctx.createGain();
-  master.gain.setValueAtTime(1.0, when);
-  master.connect(ctx.destination);
-
-  function partial(freq: number, amp: number, duration: number) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, when);
-    gain.gain.setValueAtTime(amp, when);
-    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-    osc.connect(gain).connect(master);
-    osc.start(when);
-    osc.stop(when + duration);
-  }
-
-  partial(baseFreq, 1.0, 1.4);
-  partial(baseFreq * 2, 0.4, 1.0);
-  partial(baseFreq * 3, 0.25, 0.9);
-}
-
-function playBell(baseFreq: number) {
-  const ctx = getAudioContext();
-  playBellAt(baseFreq, ctx.currentTime);
-}
-
-function playBellC5() {
-  playBell(523.25);
-}
+// Audio helpers are centralized in app/lib/audio
 
 export default function SubPage({ params }: PageProps) {
   const { id } = use(params);
@@ -589,7 +550,7 @@ function SequencerGrid16x16({ animateOnPlay = false }: { animateOnPlay?: boolean
   const numCols = 16;
   const numRows = 16;
   const squareSize = 20; // px
-  const gap = 5; // px
+  const gap = 7; // px
   const totalWidth = numCols * squareSize + (numCols - 1) * gap;
   const [position, setPosition] = useState(0);
   const [active, setActive] = useState<boolean[][]>(
