@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useRef } from "react";
 import { getAudioContext, playBellAt, playBell, playBellC5, midiToFreq } from "@/app/lib/audio";
 import { useSequencer16x16 } from "@/app/lib/sequencer";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Copy as CopyIcon } from "lucide-react";
 import { MuteButton, ClearButton } from "@/app/components/Controls";
 import SequencerGrid from "@/app/components/SequencerGrid";
 
@@ -64,35 +64,43 @@ function Page2() {
 
 function ClickToggleWithSoundAndArrow() {
   const [active, setActive] = useState<boolean[]>(Array(8).fill(false));
+  const squareSize = 60; // px
+  const gap = 15; // px
 
   return (
     <main className="h-full flex items-center justify-center">
-      <div className="flex flex-col items-start" style={{ gap: 15 }}>
+      <div className="flex flex-col items-start" style={{ gap }}>
         <div className="relative h-[30px] w-[60px] flex items-center justify-center ml-0">
           <div
             aria-hidden
             className="w-0 h-0 border-l-[10px] border-r-[10px] border-l-transparent border-r-transparent border-t-[14px] border-t-white"
           />
         </div>
-        <div className="flex" style={{ gap: 15 }}>
+        <div className="flex" style={{ gap }}>
           {active.map((isOn, idx) => (
-            <div
-              key={idx}
-              onClick={() => {
-                setActive((prev) => {
-                  const next = [...prev];
-                  next[idx] = !next[idx];
-                  return next;
-                });
-                playBellC5();
-              }}
-              className={
-                isOn
-                  ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                  : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-              }
-              style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-            />
+            <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+              <div
+                className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+                style={
+                  isOn
+                    ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                    : { width: "100%", height: "100%" }
+                }
+              />
+              <div
+                aria-hidden
+                onClick={() => {
+                  setActive((prev) => {
+                    const next = [...prev];
+                    next[idx] = !next[idx];
+                    return next;
+                  });
+                  playBellC5();
+                }}
+                className="absolute cursor-pointer"
+                style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -142,26 +150,34 @@ function HoverRevert() {
 
 function ClickToggle() {
   const [active, setActive] = useState<boolean[]>(Array(8).fill(false));
+  const squareSize = 60; // px
+  const gap = 15; // px
   return (
     <main className="h-full flex items-center justify-center">
-      <div className="flex gap-[15px]">
+      <div className="flex" style={{ gap }}>
         {active.map((isOn, idx) => (
-          <div
-            key={idx}
-            onClick={() =>
-              setActive((prev) => {
-                const next = [...prev];
-                next[idx] = !next[idx];
-                return next;
-              })
-            }
-            className={
-              isOn
-                ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-            }
-            style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-          />
+          <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+            <div
+              className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+              style={
+                isOn
+                  ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                  : { width: "100%", height: "100%" }
+              }
+            />
+            <div
+              aria-hidden
+              onClick={() =>
+                setActive((prev) => {
+                  const next = [...prev];
+                  next[idx] = !next[idx];
+                  return next;
+                })
+              }
+              className="absolute cursor-pointer"
+              style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+            />
+          </div>
         ))}
       </div>
     </main>
@@ -170,28 +186,36 @@ function ClickToggle() {
 
 function ClickToggleWithSound() {
   const [active, setActive] = useState<boolean[]>(Array(8).fill(false));
+  const squareSize = 60; // px
+  const gap = 15; // px
 
   return (
     <main className="h-full flex items-center justify-center">
-      <div className="flex gap-[15px]">
+      <div className="flex" style={{ gap }}>
         {active.map((isOn, idx) => (
-          <div
-            key={idx}
-            onClick={() => {
-              setActive((prev) => {
-                const next = [...prev];
-                next[idx] = !next[idx];
-                return next;
-              });
-              playBellC5();
-            }}
-            className={
-              isOn
-                ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-            }
-            style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-          />
+          <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+            <div
+              className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+              style={
+                isOn
+                  ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                  : { width: "100%", height: "100%" }
+              }
+            />
+            <div
+              aria-hidden
+              onClick={() => {
+                setActive((prev) => {
+                  const next = [...prev];
+                  next[idx] = !next[idx];
+                  return next;
+                });
+                playBellC5();
+              }}
+              className="absolute cursor-pointer"
+              style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+            />
+          </div>
         ))}
       </div>
     </main>
@@ -225,23 +249,29 @@ function MovingArrowOverSquares() {
         </div>
         <div className="flex" style={{ gap }}>
           {active.map((isOn, idx) => (
-            <div
-              key={idx}
-              onClick={() => {
-                setActive((prev) => {
-                  const next = [...prev];
-                  next[idx] = !next[idx];
-                  return next;
-                });
-                playBellC5();
-              }}
-              className={
-                isOn
-                  ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                  : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-              }
-              style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-            />
+            <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+              <div
+                className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+                style={
+                  isOn
+                    ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                    : { width: "100%", height: "100%" }
+                }
+              />
+              <div
+                aria-hidden
+                onClick={() => {
+                  setActive((prev) => {
+                    const next = [...prev];
+                    next[idx] = !next[idx];
+                    return next;
+                  });
+                  playBellC5();
+                }}
+                className="absolute cursor-pointer"
+                style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -303,22 +333,28 @@ function SequencerAutoPlay() {
         </div>
         <div className="flex" style={{ gap }}>
           {active.map((isOn, idx) => (
-            <div
-              key={idx}
-              onClick={() => {
-                setActive((prev) => {
-                  const next = [...prev];
-                  next[idx] = !next[idx];
-                  return next;
-                });
-              }}
-              className={
-                isOn
-                  ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                  : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-              }
-              style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-            />
+            <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+              <div
+                className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+                style={
+                  isOn
+                    ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                    : { width: "100%", height: "100%" }
+                }
+              />
+              <div
+                aria-hidden
+                onClick={() => {
+                  setActive((prev) => {
+                    const next = [...prev];
+                    next[idx] = !next[idx];
+                    return next;
+                  });
+                }}
+                className="absolute cursor-pointer"
+                style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -389,42 +425,54 @@ function SequencerTwoRows() {
         <div className="flex flex-col" style={{ gap }}>
           <div className="flex" style={{ gap }}>
             {row1Active.map((isOn, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setRow1Active((prev) => {
-                    const next = [...prev];
-                    next[idx] = !next[idx];
-                    return next;
-                  });
-                }}
-                className={
-                  isOn
-                    ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                }
-                style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-              />
+              <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+                <div
+                  className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+                  style={
+                    isOn
+                      ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                      : { width: "100%", height: "100%" }
+                  }
+                />
+                <div
+                  aria-hidden
+                  onClick={() => {
+                    setRow1Active((prev) => {
+                      const next = [...prev];
+                      next[idx] = !next[idx];
+                      return next;
+                    });
+                  }}
+                  className="absolute cursor-pointer"
+                  style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+                />
+              </div>
             ))}
           </div>
           <div className="flex" style={{ gap }}>
             {row2Active.map((isOn, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setRow2Active((prev) => {
-                    const next = [...prev];
-                    next[idx] = !next[idx];
-                    return next;
-                  });
-                }}
-                className={
-                  isOn
-                    ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                }
-                style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-              />
+              <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+                <div
+                  className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+                  style={
+                    isOn
+                      ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                      : { width: "100%", height: "100%" }
+                  }
+                />
+                <div
+                  aria-hidden
+                  onClick={() => {
+                    setRow2Active((prev) => {
+                      const next = [...prev];
+                      next[idx] = !next[idx];
+                      return next;
+                    });
+                  }}
+                  className="absolute cursor-pointer"
+                  style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -496,42 +544,54 @@ function SequencerTwoRowsWithClear() {
         <div className="flex flex-col" style={{ gap }}>
           <div className="flex" style={{ gap }}>
             {row1Active.map((isOn, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setRow1Active((prev) => {
-                    const next = [...prev];
-                    next[idx] = !next[idx];
-                    return next;
-                  });
-                }}
-                className={
-                  isOn
-                    ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                }
-                style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-              />
+              <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+                <div
+                  className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+                  style={
+                    isOn
+                      ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                      : { width: "100%", height: "100%" }
+                  }
+                />
+                <div
+                  aria-hidden
+                  onClick={() => {
+                    setRow1Active((prev) => {
+                      const next = [...prev];
+                      next[idx] = !next[idx];
+                      return next;
+                    });
+                  }}
+                  className="absolute cursor-pointer"
+                  style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+                />
+              </div>
             ))}
           </div>
           <div className="flex" style={{ gap }}>
             {row2Active.map((isOn, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setRow2Active((prev) => {
-                    const next = [...prev];
-                    next[idx] = !next[idx];
-                    return next;
-                  });
-                }}
-                className={
-                  isOn
-                    ? "w-[60px] h-[60px] bg-white cursor-pointer"
-                    : "w-[60px] h-[60px] bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                }
-                style={isOn ? { boxShadow: "0 0 2px 2px white" } : undefined}
-              />
+              <div key={idx} className="relative group" style={{ width: squareSize, height: squareSize }}>
+                <div
+                  className={isOn ? "bg-white" : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"}
+                  style={
+                    isOn
+                      ? { width: "100%", height: "100%", boxShadow: "0 0 2px 2px white" }
+                      : { width: "100%", height: "100%" }
+                  }
+                />
+                <div
+                  aria-hidden
+                  onClick={() => {
+                    setRow2Active((prev) => {
+                      const next = [...prev];
+                      next[idx] = !next[idx];
+                      return next;
+                    });
+                  }}
+                  className="absolute cursor-pointer"
+                  style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+                />
+              </div>
             ))}
           </div>
           <div className="pt-2">
@@ -540,7 +600,7 @@ function SequencerTwoRowsWithClear() {
                 setRow1Active(Array(numSquares).fill(false));
                 setRow2Active(Array(numSquares).fill(false));
               }}
-              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
+              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer"
             >
               Clear Notes
             </button>
@@ -758,9 +818,10 @@ function SequencerGrid16x16WithShare({ animateOnPlay = false }: { animateOnPlay?
                 window.setTimeout(() => setCopied(false), 1000);
               } catch {}
             }}
-            className="px-3 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/20"
+            aria-label="Copy link"
+            className="px-3 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer"
           >
-            {copied ? "Copied!" : "Copy"}
+            {copied ? "Copied!" : <CopyIcon size={16} />}
           </button>
         </div>
         <div className="relative h-[30px]" style={{ width: totalWidth }}>

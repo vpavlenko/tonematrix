@@ -29,24 +29,30 @@ export default function SequencerGrid({
               const isOn = active[r][c];
               const isFlashing = flash[r][c];
               return (
-                <div
-                  key={c}
-                  onClick={() => onToggle(r, c)}
-                  className={
-                    isOn
-                      ? "bg-white cursor-pointer"
-                      : "bg-[var(--gray)] hover:bg-[var(--lightgray)] cursor-pointer"
-                  }
-                  style={{
-                    width: squareSize,
-                    height: squareSize,
-                    boxShadow: isOn
-                      ? isFlashing
-                        ? "0 0 3px 3px white"
-                        : "0 0 1px 1px white"
-                      : undefined,
-                  }}
-                />
+                <div key={c} className="relative group" style={{ width: squareSize, height: squareSize }}>
+                  <div
+                    className={
+                      isOn
+                        ? "bg-white"
+                        : "bg-[var(--gray)] group-hover:bg-[var(--lightgray)]"
+                    }
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      boxShadow: isOn
+                        ? isFlashing
+                          ? "0 0 3px 3px white"
+                          : "0 0 1px 1px white"
+                        : undefined,
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    onClick={() => onToggle(r, c)}
+                    className="absolute cursor-pointer"
+                    style={{ top: -(gap / 2), left: -(gap / 2), right: -(gap / 2), bottom: -(gap / 2) }}
+                  />
+                </div>
               );
             })}
           </div>
