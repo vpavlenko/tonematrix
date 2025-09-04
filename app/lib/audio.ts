@@ -12,11 +12,14 @@ export function getAudioContext(): AudioContext {
     throw new Error("AudioContext is only available in the browser");
   }
   const w = window as any;
+  const AudioCtx = w.AudioContext || w.webkitAudioContext;
+  if (!AudioCtx) {
+    throw new Error("Web Audio API is not supported in this browser");
+  }
   if (!sharedContext) {
-    const AudioCtx = w.AudioContext || w.webkitAudioContext;
     sharedContext = new AudioCtx();
   }
-  return sharedContext;
+  return sharedContext!;
 }
 
 function ensureMasterChain(): { ctx: AudioContext; master: GainNode } {
