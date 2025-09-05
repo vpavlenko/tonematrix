@@ -21,3 +21,35 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Radiance pulse for next-link highlight */
+@keyframes radiance-ring-1 {
+  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); opacity: 1; }
+  70% { box-shadow: 0 0 0 14px rgba(255,255,255,0); opacity: 0; }
+  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); opacity: 0; }
+}
+@keyframes radiance-ring-2 {
+  0% { box-shadow: 0 0 0 0 rgba(0,255,140,0.35); opacity: 1; }
+  70% { box-shadow: 0 0 0 22px rgba(0,255,140,0); opacity: 0; }
+  100% { box-shadow: 0 0 0 0 rgba(0,255,140,0); opacity: 0; }
+}
+
+.radiance-pulse {
+  position: relative;
+  z-index: 1;
+}
+.radiance-pulse::before,
+.radiance-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+.radiance-pulse::before {
+  animation: radiance-ring-1 1.4s ease-out infinite;
+}
+.radiance-pulse::after {
+  animation: radiance-ring-2 1.6s ease-out infinite;
+  animation-delay: 200ms;
+}

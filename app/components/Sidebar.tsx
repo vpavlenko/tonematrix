@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
 import { CHAPTERS_COUNT } from "@/app/lib/chapters";
-import { ExternalLink as ExternalLinkIcon, Copy, Upload } from "lucide-react";
+import { ExternalLink as ExternalLinkIcon, Copy, Upload, Check } from "lucide-react";
 import { ExternalLink } from "@/app/components/ExternalLink";
 import HintGif from "@/app/components/HintGif";
 import { useProgress, useUpsertProgress } from "@/app/lib/progress";
@@ -31,15 +31,21 @@ export default function Sidebar() {
   const [sourceCode, setSourceCode] = useState("");
   const promptText = "Using React, make a single gray square in the center of the black background screen";
   const [shareLinkFocused, setShareLinkFocused] = useState(false);
-  const isShareLinkValidPrefix =
-    shareLink.startsWith("https://chatgpt.com/share/") ||
-    shareLink.startsWith("https://claude.ai/share/");
+  const SHARE_LINK_VALID_PREFIXES = [
+    "https://chatgpt.com/share/",
+    "https://claude.ai/share/",
+  ] as const;
+  const isShareLinkValidPrefix = SHARE_LINK_VALID_PREFIXES.some((prefix) =>
+    shareLink.startsWith(prefix)
+  );
   const shouldShowShareHint = (shareLinkFocused && !isShareLinkValidPrefix) || (shareLink && !isShareLinkValidPrefix);
+  const [sourceCodeFocused, setSourceCodeFocused] = useState(false);
+  const shouldShowSourceHint = sourceCodeFocused && !sourceCode;
   const sourceCodeRef = useRef<HTMLTextAreaElement | null>(null);
   const prevValidityRef = useRef<boolean>(false);
-  const [showCodeHint, setShowCodeHint] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
-  const [chatLinkForPage, setChatLinkForPage] = useState<string>("");
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { data: progress } = useProgress(currentIndex + 1);
   const upsertProgress = useUpsertProgress();
 
@@ -50,6 +56,12 @@ export default function Sidebar() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Clear form fields when navigating between pages
+  useEffect(() => {
+    setShareLink("");
+    setSourceCode("");
+  }, [currentIndex]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -142,37 +154,32 @@ export default function Sidebar() {
     if (progress) {
       if (progress.chat_link) setShareLink(progress.chat_link);
       if (progress.source_code) setSourceCode(progress.source_code);
-      setChatLinkForPage(progress.chat_link ?? "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress?.chat_link, progress?.source_code]);
 
-  // Show hint for source code when input focused and lacking key markers
-  useEffect(() => {
-    const lower = sourceCode.toLowerCase();
-    const hasMarkers = lower.includes("import") || lower.includes("<html>");
-    setShowCodeHint(!hasMarkers && (!!sourceCode || document.activeElement === sourceCodeRef.current));
-  }, [sourceCode]);
-
-  // Auto-save when contains import or <html>
-  useEffect(() => {
-    const lower = sourceCode.toLowerCase();
-    const hasMarkers = lower.includes("import") || lower.includes("<html>");
-    if (!hasMarkers) return;
-    const handle = window.setTimeout(async () => {
+  // Manual submit handler (no auto-submit)
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id;
       if (!userId) return;
-      upsertProgress.mutate({
+      await upsertProgress.mutateAsync({
         user_id: userId,
         page: currentIndex + 1,
         chat_link: shareLink || null,
-        source_code: sourceCode,
+        source_code: sourceCode || null,
       });
-      setChatLinkForPage(shareLink);
-    }, 500);
-    return () => window.clearTimeout(handle);
-  }, [sourceCode, shareLink, currentIndex]);
+      try {
+        window.dispatchEvent(
+          new CustomEvent("progress-submitted", { detail: { page: currentIndex + 1 } })
+        );
+      } catch {}
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const signInWithGoogle = async () => {
     try {
@@ -215,24 +222,37 @@ export default function Sidebar() {
         <div className="flex flex-col" style={{ gap: 6 }}>
           {currentIndex === 0 ? <><p className="text-white/80 mb-6">This is a step-by-step vibe-coding exercise. We replicate the <ExternalLink href="https://tonematrix.maxlaumeister.com/">ToneMatrix</ExternalLink> behavior.</p>
           <p>Open{" "}
-            <ExternalLink href="https://chatgpt.com/">ChatGPT</ExternalLink>
+            <ExternalLink href="https://chatgpt.com/">ChatGPT</ExternalLink>{" "}
              and ask:</p>
              <blockquote className="relative text-white/90 bg-white/5 border border-white/10 rounded-md p-4">
               <span>Using React, make a single gray square in the center of the black background screen</span>
               <button
                 type="button"
-                aria-label="Copy prompt"
-                onClick={() => navigator.clipboard?.writeText(promptText)}
-                className="absolute bottom-2 right-2 inline-flex items-center justify-center p-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer"
+                aria-label={copiedPrompt ? "Copied prompt" : "Copy prompt"}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard?.writeText(promptText);
+                    setCopiedPrompt(true);
+                    window.setTimeout(() => setCopiedPrompt(false), 1000);
+                  } catch {}
+                }}
+                className="absolute bottom-2 right-2 inline-flex items-center justify-center p-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer transition-colors transition-transform duration-150 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/30"
               >
-                <Copy size={16} className="text-white/80" />
+                {copiedPrompt ? (
+                  <Check size={16} className="text-green-400" />
+                ) : (
+                  <Copy size={16} className="text-white/80" />
+                )}
               </button>
-            </blockquote></>
+            </blockquote>
+            <p>Wait for ChatGPT to respond and then click "Preview" to see the result.</p>
+            </>
             
            : (
+            <>
             <p className="text-white/80">
-              At each step, your goal is to find what's new in the behavior on the right and ask ChatGPT to make those changes. Amend prompts to the single chat unless you got stuck.
-            </p>
+              At each step, your goal is to find what's new in the behavior on the right and ask ChatGPT to make those changes. Amend prompts to the single chat. </p><p className="text-white/80">If you got stuck, start a new chat and paste the last working source code into it.</p>
+            </>
           )}
 
         </div>
@@ -242,79 +262,92 @@ export default function Sidebar() {
       <div className="flex flex-col" style={{ gap: 12 }}>
         {user ? (
           <>
-            <div className="text-sm text-white/80">Submit your solution for page {currentIndex + 1}</div>
-            <div className="flex flex-col" style={{ gap: 8 }}>
-              <label className="text-sm text-white/80" htmlFor="share-link">Chat link</label>
-              <div className="flex items-start" style={{ gap: 8 }}>
-                <input
-                  id="share-link"
-                  value={shareLink}
-                  onChange={(e) => setShareLink(e.target.value)}
-                  onFocus={() => setShareLinkFocused(true)}
-                  onBlur={() => setShareLinkFocused(false)}
-                  placeholder="https://chatgpt.com/share/..."
-                  aria-invalid={!!shareLink && !isShareLinkValidPrefix}
-                  className={`flex-1 px-3 py-2 rounded-md bg-white/10 border placeholder:text-white/40 ${
-                    shareLink
-                      ? isShareLinkValidPrefix
-                        ? "border-green-500"
-                        : "border-red-500"
-                      : "border-white/20"
-                  }`}
-                  autoComplete="off"
-                />
-                {/* Hint moved to right-pane fixed overlay */}
-              </div>
-            </div>
-            <div className="flex flex-col" style={{ gap: 8 }}>
-              <label className="text-sm text-white/80" htmlFor="source-code">Source code</label>
-              <textarea
-                id="source-code"
-                value={sourceCode}
-                onChange={(e) => setSourceCode(e.target.value)}
-                onFocus={() => {
-                  const lower = sourceCode.toLowerCase();
-                  const hasMarkers = lower.includes("import") || lower.includes("<html>");
-                  setShowCodeHint(!hasMarkers);
-                }}
-                onBlur={() => setShowCodeHint(false)}
-                placeholder="Paste your solution code here"
-                rows={6}
-                ref={sourceCodeRef}
-                className="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder:text-white/40 resize-y font-mono"
-              />
-              {/* Hint moved to right-pane fixed overlay */}
-            </div>
-            {chatLinkForPage || sourceCode ? (
-              <div className="flex flex-col gap-2 p-2 rounded-md bg-white/5 border border-white/10">
-                {chatLinkForPage ? (
+            {progress ? (
+              <div className="flex flex-col" style={{ gap: 12 }}>
+                <div className="text-sm text-white/80">Submitted solution for page {currentIndex + 1}</div>
+                {progress.chat_link ? (
                   <div className="text-sm text-white/80">
-                    Chat: <ExternalLink href={chatLinkForPage}>{chatLinkForPage}</ExternalLink>
+                    Chat: <ExternalLink href={progress.chat_link}>{progress.chat_link}</ExternalLink>
                   </div>
                 ) : null}
-                {sourceCode ? (
-                  <div className="relative">
-                    <pre className="overflow-auto max-h-48 text-xs bg-black/40 p-3 rounded-md border border-white/10">
-                      {sourceCode}
+                {progress.source_code ? (
+                  <div className="flex flex-col" style={{ gap: 8 }}>
+                    <pre className="overflow-auto max-h-64 text-xs bg-black/40 p-3 rounded-md border border-white/10">
+                      {progress.source_code}
                     </pre>
                     <button
                       type="button"
-                      aria-label="Copy code"
+                      aria-label={copiedCode ? "Copied code" : "Copy code"}
                       onClick={async () => {
                         try {
-                          await navigator.clipboard?.writeText(sourceCode);
+                          await navigator.clipboard?.writeText(progress.source_code || "");
                           setCopiedCode(true);
                           window.setTimeout(() => setCopiedCode(false), 1000);
                         } catch {}
                       }}
-                      className="absolute top-2 right-2 inline-flex items-center justify-center px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer"
+                      className="inline-flex items-center justify-center p-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer transition-colors transition-transform duration-150 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/30"
                     >
-                      {copiedCode ? "Copied!" : <Copy size={14} className="text-white/80" />}
+                      {copiedCode ? (
+                        <Check size={16} className="text-green-400" />
+                      ) : (
+                        <Copy size={16} className="text-white/80" />
+                      )}
                     </button>
                   </div>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <>
+                <div className="text-sm text-white/80">Submit your solution for page {currentIndex + 1}</div>
+                <div className="flex flex-col" style={{ gap: 8 }}>
+                  <label className="text-sm text-white/80" htmlFor="share-link">Chat link</label>
+                  <div className="flex items-start" style={{ gap: 8 }}>
+                    <input
+                      id="share-link"
+                      value={shareLink}
+                      onChange={(e) => setShareLink(e.target.value)}
+                      onFocus={() => setShareLinkFocused(true)}
+                      onBlur={() => setShareLinkFocused(false)}
+                      placeholder="https://chatgpt.com/share/..."
+                      aria-invalid={!!shareLink && !isShareLinkValidPrefix}
+                      className={`flex-1 px-3 py-2 rounded-md bg-white/10 border placeholder:text-white/40 ${
+                        shareLink
+                          ? isShareLinkValidPrefix
+                            ? "border-green-500"
+                            : "border-red-500"
+                          : "border-white/20"
+                      }`}
+                      autoComplete="off"
+                    />
+                    {/* Hint moved to right-pane fixed overlay */}
+                  </div>
+                </div>
+                <div className="flex flex-col" style={{ gap: 8 }}>
+                  <label className="text-sm text-white/80" htmlFor="source-code">Source code</label>
+                  <textarea
+                    id="source-code"
+                    value={sourceCode}
+                    onChange={(e) => setSourceCode(e.target.value)}
+                    onFocus={() => setSourceCodeFocused(true)}
+                    onBlur={() => setSourceCodeFocused(false)}
+                    placeholder="Paste your solution code here"
+                    rows={6}
+                    ref={sourceCodeRef}
+                    className="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder:text-white/40 resize-y font-mono"
+                  />
+                </div>
+                <div className="flex items-center justify-start">
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={submitting || (!shareLink && !sourceCode)}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-white text-black hover:bg-white/90 disabled:opacity-70 cursor-pointer"
+                  >
+                    {submitting ? "Submitting…" : "Submit"}
+                  </button>
+                </div>
+              </>
+            )}
             <div className="flex items-center justify-between" style={{ gap: 12 }}>
               <div className="flex items-center min-w-0" style={{ gap: 12 }}>
                 {user.avatar_url ? (
@@ -357,7 +390,7 @@ export default function Sidebar() {
         )}
       </div>
     </div>
-    {isClient && (shouldShowShareHint || showCodeHint)
+    {isClient && (shouldShowShareHint || shouldShowSourceHint)
       ? createPortal(
           <div
             style={{
@@ -368,12 +401,17 @@ export default function Sidebar() {
               pointerEvents: "none",
             }}
           >
-            {shouldShowShareHint ? (
-              <HintGif src="/share_button_hint.gif" alt="Share button hint" />
-            ) : null}
-            {showCodeHint ? (
-              <div className="mt-2">
-                <HintGif src="/share_code_button.gif" alt="Source code hint" />
+            {shouldShowSourceHint ? (
+              <HintGif src="/share_code_button.gif" alt="Source code hint" />
+            ) : shouldShowShareHint ? (
+              <div className="flex flex-col" style={{ gap: 6 }}>
+                <div className="text-red-500 text-sm">The link should start with either:</div>
+                <ul className="text-red-500 text-sm" style={{ listStyle: "disc", paddingLeft: 16 }}>
+                  {SHARE_LINK_VALID_PREFIXES.map((prefix) => (
+                    <li key={prefix}><span className="font-mono">{prefix}</span></li>
+                  ))}
+                </ul>
+                <HintGif src="/share_button_hint.gif" alt="Share button hint" />
               </div>
             ) : null}
           </div>,
