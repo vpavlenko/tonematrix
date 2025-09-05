@@ -50,17 +50,24 @@ export default function HeaderNav() {
             key={n}
             href={`/${n}`}
             aria-current={isActive ? "page" : undefined}
-            className={
-              (isActive
-                ? "no-underline rounded-full w-8 h-8 flex items-center justify-center bg-white text-black"
-                : hasProgress
-                ? "no-underline rounded-full w-8 h-8 flex items-center justify-center bg-green-500 text-black"
-                : "no-underline rounded-full w-8 h-8 flex items-center justify-center bg-black text-white") +
-              (shouldRadiate ? " radiance-pulse" : "")
-            }
+            className="no-underline block h-[80px] -mx-2 px-2 flex items-center"
             prefetch
           >
-            {n}
+            <span
+              className={
+                (
+                  isActive
+                    ? hasProgress
+                      ? "relative rounded-full w-8 h-8 flex items-center justify-center bg-green-500 text-black ring-5 ring-white"
+                      : "relative rounded-full w-8 h-8 flex items-center justify-center bg-black text-white ring-5 ring-white"
+                    : hasProgress
+                    ? "relative rounded-full w-8 h-8 flex items-center justify-center bg-green-500 text-black"
+                    : "relative rounded-full w-8 h-8 flex items-center justify-center bg-black text-white"
+                ) + (shouldRadiate ? " radiance-pulse" : "")
+              }
+            >
+              {n}
+            </span>
           </Link>
         );
       })}
