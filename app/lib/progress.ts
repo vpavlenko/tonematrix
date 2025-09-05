@@ -10,6 +10,12 @@ export type Progress = {
   source_code: string | null;
 };
 
+export type ProgressWithUser = Progress & {
+  name: string | null;
+  email: string | null;
+  updated_at: string;
+};
+
 async function getCurrentUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.user?.id ?? null;
@@ -65,6 +71,20 @@ export function useUpsertProgress() {
       qc.setQueryData(["progress", p.page], p);
       qc.invalidateQueries({ queryKey: ["progress", "all"] });
     },
+  });
+}
+
+// Teacher-only: fetch all progress with user info via RPC
+export function useAllProgressWithUsers(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ["progress", "teacher", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_all_progress_with_users");
+      if (error) throw error;
+      return (data as ProgressWithUser[]) ?? [];
+    },
+    staleTime: 5_000,
+    enabled,
   });
 }
 

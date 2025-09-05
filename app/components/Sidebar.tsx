@@ -9,7 +9,9 @@ import { CHAPTERS_COUNT } from "@/app/lib/chapters";
 import { ExternalLink as ExternalLinkIcon, Copy, Upload, Check } from "lucide-react";
 import { ExternalLink } from "@/app/components/ExternalLink";
 import HintGif from "@/app/components/HintGif";
+import CodeBlock from "@/app/components/CodeBlock";
 import { useProgress, useUpsertProgress } from "@/app/lib/progress";
+import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 
 type Profile = {
   id: string;
@@ -193,35 +195,7 @@ export default function Sidebar() {
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
-          skipBrowserRedirect: true,
-        },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        const w = 500;
-        const h = 600;
-        const y = typeof window !== "undefined" ? window.top!.outerHeight / 2 + window.top!.screenY - h / 2 : 0;
-        const x = typeof window !== "undefined" ? window.top!.outerWidth / 2 + window.top!.screenX - w / 2 : 0;
-        window.open(
-          data.url,
-          "supabase_oauth",
-          `width=${w},height=${h},left=${x},top=${y},status=no,toolbar=no,menubar=no,location=no`
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const signInWithGoogle = async () => {};
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -284,9 +258,7 @@ export default function Sidebar() {
                 ) : null}
                 {progress.source_code ? (
                   <div className="flex flex-col" style={{ gap: 8 }}>
-                    <pre className="overflow-auto max-h-64 text-xs bg-black/40 p-3 rounded-md border border-white/10">
-                      {progress.source_code}
-                    </pre>
+                    <CodeBlock code={progress.source_code} />
                     <button
                       type="button"
                       aria-label={copiedCode ? "Copied code" : "Copy code"}
@@ -393,13 +365,7 @@ export default function Sidebar() {
             </div>
           </>
         ) : (
-            <button
-              onClick={signInWithGoogle}
-              disabled={loading}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-white text-black hover:bg-white/90 disabled:opacity-70 cursor-pointer"
-            >
-              {loading ? "Opening…" : "Continue with Google"}
-            </button>
+            <GoogleSignInButton />
         )}
       </div>
     </div>

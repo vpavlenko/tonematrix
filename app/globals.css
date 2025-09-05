@@ -53,3 +53,39 @@ body {
   animation: radiance-ring-2 1.6s ease-out infinite;
   animation-delay: 200ms;
 }
+
+/* Minimal dark syntax highlighting compatible with highlight.js */
+.hljs {
+  color: #e6edf3;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: #ff7b72;
+}
+.hljs-function .hljs-title,
+.hljs-title.function_ {
+  color: #d2a8ff;
+}
+.hljs-string,
+.hljs-doctag {
+  color: #a5d6ff;
+}
+.hljs-number,
+.hljs-attr,
+.hljs-attribute {
+  color: #79c0ff;
+}
+.hljs-variable,
+.hljs-template-variable,
+.hljs-class .hljs-title {
+  color: #ffa657;
+}
+.hljs-comment {
+  color: #8b949e;
+}
+.hljs-meta {
+  color: #7ee787;
+}
