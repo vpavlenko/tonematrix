@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
 import { CHAPTERS_COUNT } from "@/app/lib/chapters";
-import { ExternalLink, Copy } from "lucide-react";
+import { ExternalLink as ExternalLinkIcon, Copy, Upload } from "lucide-react";
+import { ExternalLink } from "@/app/components/ExternalLink";
+import HintGif from "@/app/components/HintGif";
+import { useProgress, useUpsertProgress } from "@/app/lib/progress";
 
 type Profile = {
   id: string;
@@ -26,6 +30,69 @@ export default function Sidebar() {
   const [shareLink, setShareLink] = useState("");
   const [sourceCode, setSourceCode] = useState("");
   const promptText = "Using React, make a single gray square in the center of the black background screen";
+  const [shareLinkFocused, setShareLinkFocused] = useState(false);
+  const isShareLinkValidPrefix =
+    shareLink.startsWith("https://chatgpt.com/share/") ||
+    shareLink.startsWith("https://claude.ai/share/");
+  const shouldShowShareHint = (shareLinkFocused && !isShareLinkValidPrefix) || (shareLink && !isShareLinkValidPrefix);
+  const sourceCodeRef = useRef<HTMLTextAreaElement | null>(null);
+  const prevValidityRef = useRef<boolean>(false);
+  const [showCodeHint, setShowCodeHint] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [chatLinkForPage, setChatLinkForPage] = useState<string>("");
+  const { data: progress } = useProgress(currentIndex + 1);
+  const upsertProgress = useUpsertProgress();
+
+  // Fixed overlay offsets relative to right pane
+  const [isClient, setIsClient] = useState(false);
+  const [paneOffsets, setPaneOffsets] = useState<{ left: number; bottom: number }>({ left: 16, bottom: 16 });
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    const pane = document.querySelector('[data-right-pane]') as HTMLElement | null;
+    if (!pane) return;
+
+    const compute = () => {
+      const rect = pane.getBoundingClientRect();
+      const left = Math.max(0, rect.left) + 16;
+      const bottom = Math.max(0, window.innerHeight - rect.bottom) + 16;
+      setPaneOffsets({ left, bottom });
+    };
+
+    compute();
+    const onResize = () => compute();
+    const onScroll = () => compute();
+    window.addEventListener("resize", onResize);
+    // Capture scroll to catch nested scrollables
+    window.addEventListener("scroll", onScroll, true);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => compute());
+      ro.observe(pane);
+    }
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+      ro?.disconnect();
+    };
+  }, [isClient]);
+
+  useEffect(() => {
+    const wasValid = prevValidityRef.current;
+    const isValid = isShareLinkValidPrefix;
+    if (!wasValid && isValid && shareLink) {
+      // Transition invalid -> valid after paste or edit: focus source code field
+      sourceCodeRef.current?.focus();
+      setShareLinkFocused(false);
+    }
+    prevValidityRef.current = isValid;
+  }, [isShareLinkValidPrefix, shareLink]);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,6 +137,43 @@ export default function Sidebar() {
     };
   }, []);
 
+  // Hydrate inputs from cached progress
+  useEffect(() => {
+    if (progress) {
+      if (progress.chat_link) setShareLink(progress.chat_link);
+      if (progress.source_code) setSourceCode(progress.source_code);
+      setChatLinkForPage(progress.chat_link ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress?.chat_link, progress?.source_code]);
+
+  // Show hint for source code when input focused and lacking key markers
+  useEffect(() => {
+    const lower = sourceCode.toLowerCase();
+    const hasMarkers = lower.includes("import") || lower.includes("<html>");
+    setShowCodeHint(!hasMarkers && (!!sourceCode || document.activeElement === sourceCodeRef.current));
+  }, [sourceCode]);
+
+  // Auto-save when contains import or <html>
+  useEffect(() => {
+    const lower = sourceCode.toLowerCase();
+    const hasMarkers = lower.includes("import") || lower.includes("<html>");
+    if (!hasMarkers) return;
+    const handle = window.setTimeout(async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (!userId) return;
+      upsertProgress.mutate({
+        user_id: userId,
+        page: currentIndex + 1,
+        chat_link: shareLink || null,
+        source_code: sourceCode,
+      });
+      setChatLinkForPage(shareLink);
+    }, 500);
+    return () => window.clearTimeout(handle);
+  }, [sourceCode, shareLink, currentIndex]);
+
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
@@ -105,13 +209,13 @@ export default function Sidebar() {
   };
 
   return (
+    <>
     <div className="h-full flex flex-col justify-between" style={{ gap: 16 }}>
       <div className="flex flex-col" style={{ gap: 16 }}>
         <div className="flex flex-col" style={{ gap: 6 }}>
-          <p className="text-white/80 mb-6">This is a step-by-step vibe-coding exercise. We replicate the <a href="https://tonematrix.maxlaumeister.com/" target="_blank" rel="noopener noreferrer" style={{ color: "white",fontWeight: "bold", display: "inline-flex", gap: 4 }}>ToneMatrix <ExternalLink size={20} /></a> behavior.</p>
-          {currentIndex === 0 ? <>
+          {currentIndex === 0 ? <><p className="text-white/80 mb-6">This is a step-by-step vibe-coding exercise. We replicate the <ExternalLink href="https://tonematrix.maxlaumeister.com/">ToneMatrix</ExternalLink> behavior.</p>
           <p>Open{" "}
-            <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" style={{ color: "white",fontWeight: "bold", display: "inline-flex", gap: 4 }}>ChatGPT <ExternalLink size={20} /></a>
+            <ExternalLink href="https://chatgpt.com/">ChatGPT</ExternalLink>
              and ask:</p>
              <blockquote className="relative text-white/90 bg-white/5 border border-white/10 rounded-md p-4">
               <span>Using React, make a single gray square in the center of the black background screen</span>
@@ -141,16 +245,26 @@ export default function Sidebar() {
             <div className="text-sm text-white/80">Submit your solution for page {currentIndex + 1}</div>
             <div className="flex flex-col" style={{ gap: 8 }}>
               <label className="text-sm text-white/80" htmlFor="share-link">Chat link</label>
-              <input
-                id="share-link"
-                value={shareLink}
-                onChange={(e) => setShareLink(e.target.value)}
-                placeholder="https://chatgpt.com/share/..."
-                className="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder:text-white/40"
-              />
-              {shareLink && !shareLink.startsWith("https://chatgpt.com/share/") ? (
-                <div className="text-xs text-red-400">Link must start with https://chatgpt.com/share/</div>
-              ) : null}
+              <div className="flex items-start" style={{ gap: 8 }}>
+                <input
+                  id="share-link"
+                  value={shareLink}
+                  onChange={(e) => setShareLink(e.target.value)}
+                  onFocus={() => setShareLinkFocused(true)}
+                  onBlur={() => setShareLinkFocused(false)}
+                  placeholder="https://chatgpt.com/share/..."
+                  aria-invalid={!!shareLink && !isShareLinkValidPrefix}
+                  className={`flex-1 px-3 py-2 rounded-md bg-white/10 border placeholder:text-white/40 ${
+                    shareLink
+                      ? isShareLinkValidPrefix
+                        ? "border-green-500"
+                        : "border-red-500"
+                      : "border-white/20"
+                  }`}
+                  autoComplete="off"
+                />
+                {/* Hint moved to right-pane fixed overlay */}
+              </div>
             </div>
             <div className="flex flex-col" style={{ gap: 8 }}>
               <label className="text-sm text-white/80" htmlFor="source-code">Source code</label>
@@ -158,11 +272,49 @@ export default function Sidebar() {
                 id="source-code"
                 value={sourceCode}
                 onChange={(e) => setSourceCode(e.target.value)}
+                onFocus={() => {
+                  const lower = sourceCode.toLowerCase();
+                  const hasMarkers = lower.includes("import") || lower.includes("<html>");
+                  setShowCodeHint(!hasMarkers);
+                }}
+                onBlur={() => setShowCodeHint(false)}
                 placeholder="Paste your solution code here"
                 rows={6}
-                className="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder:text-white/40 resize-y"
+                ref={sourceCodeRef}
+                className="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder:text-white/40 resize-y font-mono"
               />
+              {/* Hint moved to right-pane fixed overlay */}
             </div>
+            {chatLinkForPage || sourceCode ? (
+              <div className="flex flex-col gap-2 p-2 rounded-md bg-white/5 border border-white/10">
+                {chatLinkForPage ? (
+                  <div className="text-sm text-white/80">
+                    Chat: <ExternalLink href={chatLinkForPage}>{chatLinkForPage}</ExternalLink>
+                  </div>
+                ) : null}
+                {sourceCode ? (
+                  <div className="relative">
+                    <pre className="overflow-auto max-h-48 text-xs bg-black/40 p-3 rounded-md border border-white/10">
+                      {sourceCode}
+                    </pre>
+                    <button
+                      type="button"
+                      aria-label="Copy code"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard?.writeText(sourceCode);
+                          setCopiedCode(true);
+                          window.setTimeout(() => setCopiedCode(false), 1000);
+                        } catch {}
+                      }}
+                      className="absolute top-2 right-2 inline-flex items-center justify-center px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer"
+                    >
+                      {copiedCode ? "Copied!" : <Copy size={14} className="text-white/80" />}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex items-center justify-between" style={{ gap: 12 }}>
               <div className="flex items-center min-w-0" style={{ gap: 12 }}>
                 {user.avatar_url ? (
@@ -205,6 +357,30 @@ export default function Sidebar() {
         )}
       </div>
     </div>
+    {isClient && (shouldShowShareHint || showCodeHint)
+      ? createPortal(
+          <div
+            style={{
+              position: "fixed",
+              left: paneOffsets.left,
+              bottom: paneOffsets.bottom,
+              zIndex: 50,
+              pointerEvents: "none",
+            }}
+          >
+            {shouldShowShareHint ? (
+              <HintGif src="/share_button_hint.gif" alt="Share button hint" />
+            ) : null}
+            {showCodeHint ? (
+              <div className="mt-2">
+                <HintGif src="/share_code_button.gif" alt="Source code hint" />
+              </div>
+            ) : null}
+          </div>,
+          document.body
+        )
+      : null}
+    </>
   );
 }
 
