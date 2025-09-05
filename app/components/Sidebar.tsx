@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
 import { CHAPTERS_COUNT } from "@/app/lib/chapters";
-import { ExternalLink as ExternalLinkIcon, Copy, Upload, Check } from "lucide-react";
+import { ExternalLink as ExternalLinkIcon, Copy, Upload, Check, Send } from "lucide-react";
 import { ExternalLink } from "@/app/components/ExternalLink";
 import HintGif from "@/app/components/HintGif";
 import CodeBlock from "@/app/components/CodeBlock";
@@ -54,6 +54,7 @@ export default function Sidebar() {
   const { data: progress } = useProgress(currentIndex + 1);
   const upsertProgress = useUpsertProgress();
   const queryClient = useQueryClient();
+  const [submitFocused, setSubmitFocused] = useState(false);
 
   // Fixed overlay offsets relative to right pane
   const [isClient, setIsClient] = useState(false);
@@ -173,9 +174,14 @@ export default function Sidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress?.chat_link, progress?.source_code]);
 
+  const isSourceValid = sourceCode.length >= 10;
+  const isShareValid = Boolean(shareLink) && isShareLinkValidPrefix;
+  const shouldSubmitShake = submitFocused && isSourceValid && isShareValid;
+
   // Manual submit handler (no auto-submit)
   const handleSubmit = async () => {
     try {
+      if (!isShareValid || !isSourceValid) return;
       setSubmitting(true);
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id;
@@ -315,7 +321,7 @@ export default function Sidebar() {
                     onChange={(e) => {
                       const newValue = e.target.value;
                       setSourceCode(newValue);
-                      if (newValue.length > 10) {
+                      if (newValue.length >= 10) {
                         submitButtonRef.current?.focus();
                       }
                     }}
@@ -324,7 +330,14 @@ export default function Sidebar() {
                     placeholder="Paste your solution code here"
                     rows={6}
                     ref={sourceCodeRef}
-                    className="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder:text-white/40 resize-y font-mono"
+                    aria-invalid={Boolean(sourceCode) && !isSourceValid}
+                    className={`px-3 py-2 rounded-md bg-white/10 border placeholder:text-white/40 resize-y font-mono ${
+                      sourceCode
+                        ? isSourceValid
+                          ? "border-green-500"
+                          : "border-red-500"
+                        : "border-white/20"
+                    }`}
                   />
                 </div>
                 <div className="flex items-center justify-start">
@@ -332,9 +345,14 @@ export default function Sidebar() {
                     type="button"
                     onClick={handleSubmit}
                     ref={submitButtonRef}
-                    disabled={submitting || (!shareLink && !sourceCode)}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-white text-black hover:bg-white/90 disabled:opacity-70 cursor-pointer"
+                    disabled={submitting || !isShareValid || !isSourceValid}
+                    onFocus={() => setSubmitFocused(true)}
+                    onBlur={() => setSubmitFocused(false)}
+                    className={`inline-flex items-center justify-center px-4 py-2 rounded-md bg-white text-black hover:bg-white/90 disabled:opacity-70 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                      shouldSubmitShake ? "tiny-shake" : ""
+                    }`}
                   >
+                    <Send size={16} className="mr-2" />
                     {submitting ? "Submitting…" : "Submit"}
                   </button>
                 </div>
