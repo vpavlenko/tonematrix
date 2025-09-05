@@ -46,6 +46,7 @@ export default function Sidebar() {
   const [sourceCodeFocused, setSourceCodeFocused] = useState(false);
   const shouldShowSourceHint = sourceCodeFocused && !sourceCode;
   const sourceCodeRef = useRef<HTMLTextAreaElement | null>(null);
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
   const prevValidityRef = useRef<boolean>(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -287,7 +288,6 @@ export default function Sidebar() {
                   <label className="text-sm text-white/80" htmlFor="share-link">Chat link</label>
                   <div className="flex items-start" style={{ gap: 8 }}>
                     <input
-                    autoFocus
                       id="share-link"
                       value={shareLink}
                       onChange={(e) => setShareLink(e.target.value)}
@@ -312,7 +312,13 @@ export default function Sidebar() {
                   <textarea
                     id="source-code"
                     value={sourceCode}
-                    onChange={(e) => setSourceCode(e.target.value)}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setSourceCode(newValue);
+                      if (newValue.length > 10) {
+                        submitButtonRef.current?.focus();
+                      }
+                    }}
                     onFocus={() => setSourceCodeFocused(true)}
                     onBlur={() => setSourceCodeFocused(false)}
                     placeholder="Paste your solution code here"
@@ -325,6 +331,7 @@ export default function Sidebar() {
                   <button
                     type="button"
                     onClick={handleSubmit}
+                    ref={submitButtonRef}
                     disabled={submitting || (!shareLink && !sourceCode)}
                     className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-white text-black hover:bg-white/90 disabled:opacity-70 cursor-pointer"
                   >
