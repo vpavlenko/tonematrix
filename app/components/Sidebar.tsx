@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
@@ -38,7 +39,8 @@ export default function Sidebar() {
   const isShareLinkValidPrefix = SHARE_LINK_VALID_PREFIXES.some((prefix) =>
     shareLink.startsWith(prefix)
   );
-  const shouldShowShareHint = (shareLinkFocused && !isShareLinkValidPrefix) || (shareLink && !isShareLinkValidPrefix);
+  const shouldShowShareValidation = Boolean(shareLink) && !isShareLinkValidPrefix;
+  const shouldShowShareGif = shareLinkFocused;
   const [sourceCodeFocused, setSourceCodeFocused] = useState(false);
   const shouldShowSourceHint = sourceCodeFocused && !sourceCode;
   const sourceCodeRef = useRef<HTMLTextAreaElement | null>(null);
@@ -48,6 +50,7 @@ export default function Sidebar() {
   const [submitting, setSubmitting] = useState(false);
   const { data: progress } = useProgress(currentIndex + 1);
   const upsertProgress = useUpsertProgress();
+  const queryClient = useQueryClient();
 
   // Fixed overlay offsets relative to right pane
   const [isClient, setIsClient] = useState(false);
@@ -133,11 +136,20 @@ export default function Sidebar() {
       } else {
         setUser(null);
       }
+      // Invalidate queries so progress and auth-dependent data refetch on auth changes
+      try {
+        queryClient.invalidateQueries({ queryKey: ["auth"] });
+        queryClient.invalidateQueries({ queryKey: ["progress"] });
+      } catch {}
     });
 
     const onMessage = async (event: MessageEvent) => {
       if (event.data && event.data.type === "supabase-auth-complete") {
         await supabase.auth.getSession();
+        try {
+          queryClient.invalidateQueries({ queryKey: ["auth"] });
+          queryClient.invalidateQueries({ queryKey: ["progress"] });
+        } catch {}
       }
     };
     window.addEventListener("message", onMessage);
@@ -147,7 +159,7 @@ export default function Sidebar() {
       sub.subscription.unsubscribe();
       window.removeEventListener("message", onMessage);
     };
-  }, []);
+  }, [queryClient]);
 
   // Hydrate inputs from cached progress
   useEffect(() => {
@@ -303,6 +315,7 @@ export default function Sidebar() {
                   <label className="text-sm text-white/80" htmlFor="share-link">Chat link</label>
                   <div className="flex items-start" style={{ gap: 8 }}>
                     <input
+                    autoFocus
                       id="share-link"
                       value={shareLink}
                       onChange={(e) => setShareLink(e.target.value)}
@@ -390,7 +403,7 @@ export default function Sidebar() {
         )}
       </div>
     </div>
-    {isClient && (shouldShowShareHint || shouldShowSourceHint)
+    {isClient && (shouldShowSourceHint || shouldShowShareGif || shouldShowShareValidation)
       ? createPortal(
           <div
             style={{
@@ -403,17 +416,23 @@ export default function Sidebar() {
           >
             {shouldShowSourceHint ? (
               <HintGif src="/share_code_button.gif" alt="Source code hint" />
-            ) : shouldShowShareHint ? (
+            ) : (
               <div className="flex flex-col" style={{ gap: 6 }}>
-                <div className="text-red-500 text-sm">The link should start with either:</div>
-                <ul className="text-red-500 text-sm" style={{ listStyle: "disc", paddingLeft: 16 }}>
-                  {SHARE_LINK_VALID_PREFIXES.map((prefix) => (
-                    <li key={prefix}><span className="font-mono">{prefix}</span></li>
-                  ))}
-                </ul>
-                <HintGif src="/share_button_hint.gif" alt="Share button hint" />
+                {shouldShowShareValidation ? (
+                  <>
+                    <div className="text-red-500 text-sm">The link should start with either:</div>
+                    <ul className="text-red-500 text-sm" style={{ listStyle: "disc", paddingLeft: 16 }}>
+                      {SHARE_LINK_VALID_PREFIXES.map((prefix) => (
+                        <li key={prefix}><span className="font-mono">{prefix}</span></li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+                {shouldShowShareGif ? (
+                  <HintGif src="/share_button_hint.gif" alt="Share button hint" />
+                ) : null}
               </div>
-            ) : null}
+            )}
           </div>,
           document.body
         )
