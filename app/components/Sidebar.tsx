@@ -245,6 +245,9 @@ export default function Sidebar() {
             <>
             <p className="text-white/80">
               At each step, your goal is to find what's new in the behavior on the right and ask ChatGPT to make those changes. Amend prompts to the single chat. </p><p className="text-white/80">If you got stuck, start a new chat and paste the last working source code into it.</p>
+            {currentIndex === 10 ? (
+              <p className="text-white/80">For the note pitches here use pentatonic scale: C3 Eb3 F3 G3 Bb3 C4 Eb4 ... from bottom to top</p>
+            ) : null}
             </>
           )}
 
