@@ -166,6 +166,7 @@ export default function TeacherPage() {
             {/* Per-step details */}
             <div className="flex flex-col gap-4">
               {Array.from(s.progresses.values())
+                .filter((p) => p.page !== 14)
                 .sort((a, b) => a.page - b.page)
                 .map((p) => (
                   <div key={p.page} className="rounded-md border border-white/10 p-3 bg-black/40 flex flex-col gap-2">
